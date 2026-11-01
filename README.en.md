@@ -21,7 +21,7 @@ A **BepInEx 5** quality-of-life mod for **Supermarket Together**, combining rest
 | Automatic promotions | Selects an eligible stocked product each day. Can estimate slow-moving stock from inventory and recent sales, falling back to inventory ranking when sales data is unavailable. Default discount: 15%. |
 | Automatic order-department activation | Activates the unlocked order department when the supermarket opens. |
 | Extra employee capacity | Buy additional hiring slots with in-game money. Default costs increase as $5,000, $10,000, $15,000, and so on. Slots are applied after employees finish loading. |
-| Employee naming | Enter a name, randomize one employee, or randomize everyone. Choose Chinese or English names, including Alex Carter and Emma Wilson. Names have a 25-character limit; choosing a name stops the load-time default list from replacing it. |
+| Employee naming | Enter a name, randomize one employee, or randomize everyone. Both Chinese and English use male/female pools matched to the NPC; unidentified models use neutral names. Names have a 25-character limit; choosing a name stops the load-time default list from replacing it. |
 | Cleaner robot patrol | Patrols while idle and looks for nearby unclaimed trash. Patrol radius is configurable. |
 | Traditional Chinese text corrections | Includes an override table for selected in-game translations, applied when the game language is Chinese. |
 | In-game controls and status | Manager-board plugin button, F10 settings, F8 status overlay, F9 report, and F11 diagnostic logging. |
@@ -71,10 +71,12 @@ To use English random names and customize their pool:
 ```ini
 [Naming]
 RandomNameStyle = English
-EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
+MaleEnglishNames = James Parker,Daniel Brooks,Oliver Hayes
+FemaleEnglishNames = Emma Wilson,Olivia Bennett,Sophia Turner
+NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 ```
 
-Use `RandomNameStyle = Chinese` for the Chinese pool configured by `RandomNames`. A new installation defaults to Chinese names. Updating the mod does not automatically randomize existing employees.
+Use `RandomNameStyle = Chinese` with `MaleChineseNames`, `FemaleChineseNames`, and `NeutralChineseNames` for Chinese names. A new installation defaults to Chinese. Legacy mixed lists (`RandomNames` and `EnglishRandomNames`) are retained as data but no longer select random names; move custom entries into the appropriate male/female/neutral lists. Updating does not rename existing employees. Use individual or bulk randomization to replace previously assigned names.
 
 | Setting | Fresh-install default | Purpose |
 | --- | --- | --- |
@@ -103,13 +105,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.1.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.2.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
-- Version 1.2.1 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.2 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 

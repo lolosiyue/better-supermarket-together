@@ -147,11 +147,8 @@ internal static class EmployeeRandomNamePatch
 
 	internal static string PickRandomName(NPC_Manager npc, int exceptIndex)
 	{
-		string[] randomNamePool = BetterSupermarketPlugin.RandomNamePool;
-		if (randomNamePool == null || randomNamePool.Length == 0)
-		{
-			return (BetterSupermarketPlugin.UsesEnglishRandomNames ? "Employee " : "員工") + Rng.Next(100, 999);
-		}
+		EmployeeGender gender = EmployeeNameCatalog.Resolve(npc, exceptIndex);
+		string[] randomNamePool = BetterSupermarketPlugin.GetRandomNamePool(gender);
 		HashSet<string> hashSet = new HashSet<string>();
 		for (int i = 0; i < npc.hiredEmployeesData.Length; i++)
 		{
@@ -164,15 +161,11 @@ internal static class EmployeeRandomNamePatch
 				}
 			}
 		}
-		for (int j = 0; j < 24; j++)
-		{
-			string text = randomNamePool[Rng.Next(randomNamePool.Length)].Trim();
-			if (text.Length != 0 && (!hashSet.Contains(text) || j >= 12))
-			{
-				return text;
-			}
-		}
-		return randomNamePool[Rng.Next(randomNamePool.Length)].Trim();
+        var unusedNames = new List<string>();
+        foreach (string name in randomNamePool)
+            if (!hashSet.Contains(name)) unusedNames.Add(name);
+        if (unusedNames.Count > 0) return unusedNames[Rng.Next(unusedNames.Count)];
+        return randomNamePool[Rng.Next(randomNamePool.Length)];
 	}
 
 	private static void RefreshRowName(Transform parent, int index, string name)

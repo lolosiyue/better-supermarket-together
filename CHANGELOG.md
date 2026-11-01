@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2 — 2026-11-01
+
+- Match both Chinese and English random employee names to the NPC model's male/female metadata.
+- Add separate configurable male, female, and neutral pools for both naming styles.
+- Use neutral names when a model cannot be identified; never fall back to the old mixed pool.
+- Apply the same selection to individual and bulk random naming, avoiding duplicates while unused names remain.
+- Preserve existing chosen names and legacy configuration data.
+
 ## 1.2.1 — 2026-11-01
 
 - Replenish only recipes assigned to sales shelves by default, including empty labeled shelves.

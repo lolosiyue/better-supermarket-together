@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.1")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.2")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.1";
+	public const string PluginVersion = "1.2.2";
 
 	internal static ManualLogSource Log;
 
@@ -171,6 +171,10 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
     private static ConfigEntry<string> _englishRandomNames;
 
+    private static readonly ConfigEntry<string>[] ChineseGenderNames = new ConfigEntry<string>[3];
+    private static readonly ConfigEntry<string>[] EnglishGenderNames = new ConfigEntry<string>[3];
+
+
     private const string DefaultEnglishNames = "Alex Carter,Emma Wilson,James Parker,Olivia Bennett,Daniel Brooks,Sophia Turner,Oliver Hayes,Amelia Foster,Noah Morgan,Charlotte Reed,Liam Cooper,Mia Collins,Ethan Walker,Evelyn Price,Lucas Bailey,Harper Mitchell,Henry Adams,Isabella Hughes,Jack Evans,Grace Harrison,Leo Thompson,Lily Anderson,Samuel Clark,Ella Roberts,Benjamin Scott,Chloe Richardson,William Green,Zoe Phillips,Thomas Baker,Lucy Campbell,Charlie Lewis,Hannah Edwards,Maxwell Miller,Alice Stewart,Oscar Taylor,Ruby Watson,Arthur James,Ivy Spencer,George Russell,Nora Hamilton";
 
 
@@ -285,15 +289,26 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         _randomNameStyle.Value = UsesEnglishRandomNames ? EmployeeNameStyle.Chinese : EmployeeNameStyle.English;
     }
 
-    internal static string[] RandomNamePool
+    internal static string[] GetRandomNamePool(EmployeeGender gender)
     {
-        get
+        bool english = UsesEnglishRandomNames;
+        var settings = english ? EnglishGenderNames : ChineseGenderNames;
+        string configured = settings[(int)gender]?.Value;
+        var names = ValidNames(configured);
+        if (names.Count == 0) names = ValidNames(EmployeeNameCatalog.DefaultNames(gender, english));
+        return names.ToArray();
+    }
+
+    private static List<string> ValidNames(string configured)
+    {
+        var names = new List<string>();
+        var seen = new HashSet<string>();
+        foreach (string entry in (configured ?? "").Split(','))
         {
-            string names = UsesEnglishRandomNames
-                ? (_englishRandomNames?.Value ?? DefaultEnglishNames)
-                : (_randomNames?.Value ?? "員工");
-            return names.Split(',');
+            string name = entry.Trim();
+            if (name.Length > 0 && name.Length <= 25 && !name.Contains("|") && seen.Add(name)) names.Add(name);
         }
+        return names;
     }
 
 	internal static float CleanerPatrolRadius
@@ -374,9 +389,15 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		_autoRename = Config.Bind("Naming", "AutoRenameEmployees", defaultValue: true, "載入存檔時，把所有員工 NPC 依「EmployeeNames」清單依序命名。");
 		_employeeNames = Config.Bind("Naming", "EmployeeNames", "小明,小華,小美,阿傑,小玲,大偉,小婷,阿強,小龍,阿珍,小玉,阿豪", "員工名稱清單（逗號分隔）；員工數超過清單時會加編號循環。");
 		_randomNameButton = Config.Bind("Naming", "RandomNameButton", defaultValue: true, "員工頁面每個員工名字旁顯示「改名」按鈕（隨機取名）＋「全部隨機改名」按鈕。");
-		_randomNames = Config.Bind("Naming", "RandomNames", "陳大明,林秀英,黃志豪,張雅婷,李文彬,王美玲,吳俊賢,劉怡芳,蔡明華,楊淑芬,謝金龍,何雅琴,高志偉,賴淑惠,潘文傑,姜美鳳,洪建宏,曾雅惠,曹志明,盧小燕,柯文謙,施雅婷,廖寶珠,鄧小鳳,許文龍,沈春梅,蘇麗華,唐國強,韓雪梅,鍾明軒,白雪娥,江文雄,方雅玲,馬俊賢,袁美鳳,宋小龍,范雅芬,徐志豪,柳淑芬,鄭文謙", "隨機改名按鈕的名稱池（逗號分隔）。");
+		_randomNames = Config.Bind("Naming", "RandomNames", "陳大明,林秀英,黃志豪,張雅婷,李文彬,王美玲,吳俊賢,劉怡芳,蔡明華,楊淑芬,謝金龍,何雅琴,高志偉,賴淑惠,潘文傑,姜美鳳,洪建宏,曾雅惠,曹志明,盧小燕,柯文謙,施雅婷,廖寶珠,鄧小鳳,許文龍,沈春梅,蘇麗華,唐國強,韓雪梅,鍾明軒,白雪娥,江文雄,方雅玲,馬俊賢,袁美鳳,宋小龍,范雅芬,徐志豪,柳淑芬,鄭文謙", "舊版混合中文名單（保留資料）；性別對應改用 MaleChineseNames、FemaleChineseNames、NeutralChineseNames。");
         _randomNameStyle = Config.Bind("Naming", "RandomNameStyle", EmployeeNameStyle.Chinese, "隨機員工名字風格：Chinese（中文）或 English（英文）。可在 F10 → 員工改名切換。");
-        _englishRandomNames = Config.Bind("Naming", "EnglishRandomNames", DefaultEnglishNames, "英文風格的隨機姓名池（逗號分隔，每個名字最多 25 字）。");
+        _englishRandomNames = Config.Bind("Naming", "EnglishRandomNames", DefaultEnglishNames, "舊版混合英文名單（保留資料）；性別對應改用 MaleEnglishNames、FemaleEnglishNames、NeutralEnglishNames。");
+        ChineseGenderNames[(int)EmployeeGender.Male] = Config.Bind("Naming", "MaleChineseNames", EmployeeNameCatalog.MaleChinese, "男性 NPC 的中文隨機名字（逗號分隔，最多 25 字）。");
+        ChineseGenderNames[(int)EmployeeGender.Female] = Config.Bind("Naming", "FemaleChineseNames", EmployeeNameCatalog.FemaleChinese, "女性 NPC 的中文隨機名字（逗號分隔，最多 25 字）。");
+        ChineseGenderNames[(int)EmployeeGender.Unknown] = Config.Bind("Naming", "NeutralChineseNames", EmployeeNameCatalog.NeutralChinese, "無法辨識 NPC 性別時使用的中性中文名字。");
+        EnglishGenderNames[(int)EmployeeGender.Male] = Config.Bind("Naming", "MaleEnglishNames", EmployeeNameCatalog.MaleEnglish, "男性 NPC 的英文隨機名字（逗號分隔，最多 25 字）。");
+        EnglishGenderNames[(int)EmployeeGender.Female] = Config.Bind("Naming", "FemaleEnglishNames", EmployeeNameCatalog.FemaleEnglish, "女性 NPC 的英文隨機名字（逗號分隔，最多 25 字）。");
+        EnglishGenderNames[(int)EmployeeGender.Unknown] = Config.Bind("Naming", "NeutralEnglishNames", EmployeeNameCatalog.NeutralEnglish, "無法辨識 NPC 性別時使用的中性英文名字。");
 
 		_showOverlay = Config.Bind("Overlay", "ShowStatusOverlay", defaultValue: true, "在畫面左上角常駐顯示插件狀態列（F8 可隨時開關）");
 		_overlayToggleKey = Config.Bind("Overlay", "ToggleKey", new KeyboardShortcut(KeyCode.F8), "開關狀態列的快速鍵");
@@ -393,7 +414,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.1", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.2", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -404,7 +425,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.1 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.2 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -1003,7 +1024,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.1 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.2 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{

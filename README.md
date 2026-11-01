@@ -21,7 +21,7 @@
 | 自動促銷 | 每天從符合最低庫存的商品中選擇促銷品；可使用庫存與近期銷量估計滯銷程度，沒有銷量資料時退回庫存排序。預設折扣 15%。 |
 | 自動開啟訂單部 | 超市開門時，自動啟用已解鎖的訂單部。 |
 | 額外員工名額 | 使用遊戲金錢購買額外僱用上限。預設依序花費 $5,000、$10,000、$15,000……，名額在員工載入完成後套用。 |
-| 員工改名 | 可手動輸入名字、個別隨機改名或全部隨機改名。支援中文與英文風格；英文名字例如 Alex Carter、Emma Wilson。名字最多 25 字，手動選名後不再被讀檔時的預設名單覆蓋。 |
+| 員工改名 | 可手動輸入名字、個別隨機改名或全部隨機改名。中文與英文都按 NPC 性別使用男／女名字池，無法辨識時使用中性名字。名字最多 25 字，手動選名後不再被讀檔時的預設名單覆蓋。 |
 | 清潔機器人巡邏 | 沒有垃圾時在店內巡邏，重新尋找附近尚未被認領的垃圾；巡邏半徑可調整。 |
 | 繁體中文修正 | 附帶繁中覆蓋字串表，修正部分遊戲內的翻譯。僅在遊戲語言為中文時套用。 |
 | 遊戲內設定與狀態 | 管理看板的插件按鈕、F10 設定面板、F8 狀態列、F9 狀態報告及 F11 診斷日誌。 |
@@ -71,10 +71,12 @@ BepInEx/config/local.supermarkettogether.autorestock2230.cfg
 ```ini
 [Naming]
 RandomNameStyle = English
-EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
+MaleEnglishNames = James Parker,Daniel Brooks,Oliver Hayes
+FemaleEnglishNames = Emma Wilson,Olivia Bennett,Sophia Turner
+NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 ```
 
-中文風格使用 `RandomNameStyle = Chinese`，名字池由 `RandomNames` 設定。首次安裝預設中文風格，更新不會自動改掉現有員工的名字。
+中文風格使用 `RandomNameStyle = Chinese`，分別設定 `MaleChineseNames`、`FemaleChineseNames`、`NeutralChineseNames`。首次安裝預設中文風格。舊的混合清單 `RandomNames`／`EnglishRandomNames` 保留資料，但不再用於隨機選名；自訂名字請移到對應的男／女／中性清單。更新不會自動改掉現有員工的名字，需要時再按個別或全部隨機改名。
 
 | 設定 | 首次安裝預設 | 用途 |
 | --- | --- | --- |
@@ -103,13 +105,13 @@ EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.1.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
+`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.2.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
 
 ## 使用範圍與目前狀態
 
 - 自動採購會花費遊戲資金；可自行調整門檻與資金保留額。生產仍需要配方、原料、工作台及生產員工。
 - 多人遊戲建議由主機安裝並保留 `OnlyHost = true`。員工改名與名額購買由主機操作。
-- 本次 1.2.1 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
+- 本次 1.2.2 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
 - 英文 README 提供英文使用說明；目前多數插件設定介面仍使用繁體中文。
 - 回報問題時請提供遊戲版本、插件版本與相關日誌片段。
 
