@@ -3,6 +3,8 @@ using System.Net;
 using System.Text;
 using Newtonsoft.Json.Linq;
 
+try
+{
 int checks = 0;
 void Check(bool condition, string name) { if (!condition) throw new Exception(name); checks++; Console.WriteLine("PASS " + name); }
 void Reject(Action action, string name) { try { action(); } catch { checks++; Console.WriteLine("PASS " + name); return; } throw new Exception(name); }
@@ -11,6 +13,9 @@ JObject Call(string name, string args) => new JObject { ["id"]="call_1",["type"]
 CacheChecks.Run(Check);
 PlanningChecks.Run(Check);
 LocalizationChecks.Run(Check);
+MotionChecks.Run(Check);
+StaffCommandChecks.Run(Check);
+RiceChecks.Run(Check);
 var rigs=JArray.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"employee-bone-names.json")));
 Check(rigs.Count==7,"all seven native employee models covered");
 foreach(var rig in rigs) {
@@ -56,7 +61,7 @@ Check(joiningEmployeeManager.hiredEmployeesData.Length==18,"joining client canno
 Mirror.NetworkServer.active=true;
 EmployeeSaveCapacityPatch.Prefix(new SaveBehaviour { NPCManager=new UnityEngine.GameObject(joiningEmployeeManager) },savedEmployees);
 Check(joiningEmployeeManager.hiredEmployeesData.Length==28,"active host retains staff load expansion");
-if (args.Contains("--staff-only")) { Console.WriteLine($"Staff load regression passed ({checks} checks). No game save was modified."); return; }
+if (args.Contains("--staff-only")) { Console.WriteLine($"Staff load regression passed ({checks} checks). No game save was modified."); return 0; }
 Check(CompanionProtocol.Endpoint("https://api.deepseek.com/").AbsoluteUri == "https://api.deepseek.com/chat/completions", "official endpoint");
 Check(CompanionProtocol.Endpoint("http://127.0.0.1:9999/v1").AbsoluteUri == "http://127.0.0.1:9999/v1/chat/completions", "local compatible endpoint");
 foreach (var endpoint in new[] { "http://example.com", "https://key@example.com", "https://example.com?key=secret", "file:///tmp/api", "garbage" }) Reject(()=>CompanionProtocol.Endpoint(endpoint),"invalid endpoint " + endpoint.Split(':')[0]);
@@ -90,7 +95,8 @@ handler.Reply="{\"choices\":[{\"finish_reason\":\"tool_calls\",\"message\":{\"ro
 var response=await CompanionProtocol.Complete(client,CompanionProtocol.Endpoint("https://example.com"),"test-secret","test-model",messages,true,CancellationToken.None);
 Check(response["tool_calls"]?.Count()==1,"real transport decodes tool response");
 var sent=JObject.Parse(handler.Body);
-Check((string)sent["thinking"]?["type"]=="disabled" && (string)sent["model"]=="test-model" && sent["tools"]?.Count()==7,"non-thinking tool request payload");
+Check((string)sent["thinking"]?["type"]=="disabled" && (string)sent["model"]=="test-model" && sent["tools"]?.Count()==10 &&
+    sent["tools"].Select(x=>(string)x["function"]?["name"]).Contains("assign_staff"),"non-thinking tool request includes staff dispatch schema");
 Check(handler.Auth=="Bearer test-secret" && !handler.Body.Contains("test-secret"),"credential stays in authorization header");
 handler.Reply="{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"收到\"}}]}";
 response=await CompanionProtocol.Complete(client,CompanionProtocol.Endpoint("http://localhost:8888/v1"),"","test-model",messages,false,CancellationToken.None);
@@ -111,6 +117,14 @@ handler.Reply=new string('x',262145);
 await RejectAsync(()=>CompanionProtocol.Complete(client,CompanionProtocol.Endpoint("https://example.com"),"fake","model",messages,true,CancellationToken.None),"oversized API response rejected");
 using(var cancellation=new CancellationTokenSource()) { cancellation.Cancel(); await RejectAsync(()=>CompanionProtocol.Complete(client,CompanionProtocol.Endpoint("https://example.com"),"fake","model",messages,true,cancellation.Token),"cancelled request stops transport"); }
 Console.WriteLine($"Completed {checks} checks. No live API was called.");
+return 0;
+}
+catch(Exception error)
+{
+    // A failed check must return a failing exit code, not open a Windows crash dialog.
+    Console.Error.WriteLine("FAIL: "+error);
+    return 1;
+}
 
 sealed class FakeHandler : HttpMessageHandler {
     public string Reply="",Body="",Auth;

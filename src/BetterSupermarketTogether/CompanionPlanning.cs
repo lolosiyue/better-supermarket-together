@@ -199,8 +199,8 @@ internal sealed class CompanionAutonomyGate
 
 internal static class CompanionToolPolicy
 {
-    internal static bool Movement(string name) => name=="assign_work" || name=="set_plan" || name=="cancel_plan" || name=="set_autonomy";
-    internal static bool Allowed(string name,bool automatic) => !automatic || name=="assign_work" || name=="set_plan" || name=="inspect_shop";
+    internal static bool Movement(string name) => name=="assign_staff" || name=="cancel_staff" || name=="assign_work" || name=="set_plan" || name=="cancel_plan" || name=="set_autonomy";
+    internal static bool Allowed(string name,bool automatic) => !automatic || name=="assign_work" || name=="set_plan" || name=="inspect_shop" || name=="inspect_staff";
     internal static bool CanHandoff(int role,int state,int equipped,bool waiting,int waitTarget)
     {
         if (equipped != 0) return false;
@@ -220,7 +220,7 @@ internal sealed class CompanionToolBudget
     internal int Calls { get; private set; }
     internal int Controls { get; private set; }
     internal int Corrections { get; private set; }
-    internal const string Rejection = "Rejected entire batch; nothing in this batch executed. Follow the exact tool schema. Restock step allows ONLY kind, product_id, shelf_id (no completion); work needs role and completion; follow allows kind and optional duration_seconds. Only one plan/mode change per turn; autonomous mode forbids follow, continuous steps, memories and mode changes. Correct the request or ask the player.";
+    internal const string Rejection = "Rejected entire batch; nothing in this batch executed. Follow the exact tool schema. Restock step allows ONLY kind, product_id, shelf_id (no completion); work needs role and completion; follow allows kind and optional duration_seconds. assign_staff accepts 1-64 distinct staff_id/role pairs, excluding the bound companion. Only one plan/mode/staff change per turn; autonomous mode forbids assign_staff, cancel_staff, follow, continuous steps, memories and mode changes. Correct the request or ask the player.";
     internal static bool CanReportRejection(JArray calls) => calls!=null && calls.Count>0 && calls.Count<=4 &&
         calls.All(x=>x is JObject && x["type"]?.Type==JTokenType.String && (string)x["type"]=="function" && x["id"]?.Type==JTokenType.String && !string.IsNullOrWhiteSpace((string)x["id"]) &&
             x["function"] is JObject function && function["name"]?.Type==JTokenType.String && function["arguments"]?.Type==JTokenType.String) &&

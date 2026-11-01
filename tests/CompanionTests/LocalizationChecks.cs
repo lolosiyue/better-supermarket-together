@@ -18,7 +18,7 @@ internal static class LocalizationChecks
             var extracted=keyPattern.Matches(File.ReadAllText(Path.Combine(source,"ModText.Catalog.cs"))).Select(x=>Regex.Unescape(x.Groups[1].Value)).ToArray();
             check(extracted.Length==extracted.Distinct().Count() && extracted.Length==ModText.Catalog.Count,"central catalog has no duplicate or lost translation entries");
             var missing=new List<string>();
-            foreach(string file in new[]{"DeepSeekCompanion.cs","CompanionPlanning.cs","CompanionWorkWorld.cs","CompanionPanelUI.cs","CompanionUsage.cs"})
+            foreach(string file in new[]{"DeepSeekCompanion.cs","CompanionPlanning.cs","CompanionWorkWorld.cs","CompanionStaffCommands.cs","CompanionStaffWorld.cs","CompanionRiceBreak.cs","CompanionPanelUI.cs","CompanionUsage.cs"})
                 foreach(string line in File.ReadLines(Path.Combine(source,file)))
                 {
                     if(line.Contains("ModText.Description(") || line.TrimStart().StartsWith("//"))continue;

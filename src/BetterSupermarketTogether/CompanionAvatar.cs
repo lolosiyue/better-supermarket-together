@@ -12,13 +12,19 @@ using UnityEngine.Rendering;
 namespace BetterSupermarketTogether;
 
 // Deliberately supports the pinned bundled VRM only. It is not a general VRM importer:
-// base textures + skinning + evaluated native bone poses, without MToon, springs or expressions.
+// Base textures, retargeted native poses and bounded secondary motion; no MToon or expressions.
 [DefaultExecutionOrder(10000)]
 internal sealed class CompanionAvatar : MonoBehaviour
 {
+    internal Sprite Portrait { get; private set; }
     private GameObject _visual;
     private Animator _source;
     private CompanionPoseBridge _bridge;
+    private CompanionSecondaryMotion _secondary;
+    private CompanionRicePose _ricePose;
+    private Dictionary<string,Transform> _human;
+    private float _riceStarted;
+    internal bool Ready => _visual!=null && _visual.activeSelf && _bridge!=null && _human!=null && _human.ContainsKey("leftHand") && _human.ContainsKey("rightHand");
     private readonly CompanionAvatarRetry _retry = new CompanionAvatarRetry();
     private string _modelPath, _lastDiagnostic;
     private readonly List<UnityEngine.Object> _resources = new List<UnityEngine.Object>();
@@ -182,7 +188,10 @@ internal sealed class CompanionAvatar : MonoBehaviour
         {
             human.Add(bone.Key,transforms[(int)bone.Value["node"]]);
         }
+        Portrait = CompanionPortrait.Render(_visual, human["head"], human["hips"], _resources);
         _bridge = new CompanionPoseBridge(_source,_visual.transform,human);
+        _human=human;
+        _secondary = new CompanionSecondaryMotion(d.Json["extensions"]?["VRMC_springBone"],transforms,_visual.transform);
         if (!_bridge.Apply()) throw new InvalidOperationException("Native rig changed while loading");
         _visual.SetActive(true);
         foreach (var renderer in _source.GetComponentsInChildren<SkinnedMeshRenderer>(true))
@@ -192,14 +201,26 @@ internal sealed class CompanionAvatar : MonoBehaviour
     private void LateUpdate()
     {
         if (_bridge == null || _visual == null || !_visual.activeSelf) return;
-        if (!_bridge.Apply()) { Release(); _retry.Reset(); Status="員工模型已變更，正在重新載入外觀。"; }
+        if (!_bridge.Apply(_employee!=null && _employee.equippedItem>=1 && _employee.equippedItem<=5))
+        { Release(); _retry.Reset(); Status="員工模型已變更，正在重新載入外觀。"; return; }
+        _ricePose?.Apply(Time.time-_riceStarted);
+        _secondary?.Apply(Time.deltaTime);
     }
+
+    internal bool BeginRicePose(int product)
+    {
+        if(!Ready || _ricePose!=null)return false;
+        try { _ricePose=new CompanionRicePose(_bridge,_human,_employee.transform,product);_riceStarted=Time.time;return true; }
+        catch(Exception error) { EndRicePose();BetterSupermarketPlugin.Log.LogWarning("Rice pose unavailable: "+error.GetType().Name);return false; }
+    }
+    internal void EndRicePose() { _ricePose?.Dispose();_ricePose=null; }
 
     private static Vector3 Vector(JToken t,Vector3 fallback,bool reverse) => t is JArray ? new Vector3((float)t[0],(float)t[1],(reverse?-1:1)*(float)t[2]) : fallback;
     internal void Clear() { if (_load != null) StopCoroutine(_load); _load=null; _employee=null; _modelPath=_lastDiagnostic=null; Release(); _retry.Reset(); Status="使用原有員工外觀。"; }
     private void Release()
     {
-        _bridge?.Restore(); _bridge=null;
+        EndRicePose();_human=null; Portrait=null;
+        _bridge?.Restore(); _bridge=null; _secondary=null;
         foreach (var renderer in _hidden) if (renderer != null) renderer.enabled=true;
         _hidden.Clear();
         if (_visual != null) { _visual.SetActive(false); Destroy(_visual); }

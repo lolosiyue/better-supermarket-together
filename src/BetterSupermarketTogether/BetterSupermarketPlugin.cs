@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.4.1")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.4.5")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.4.1";
+	public const string PluginVersion = "1.4.5";
 
     internal DeepSeekCompanion Companion { get; private set; }
 
@@ -495,19 +495,19 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			ApplyExtraEmployeeSlots(NPC_Manager.Instance);
 			SettingsPanelUI.EnsureBoardButton();
 		}
-		if (_panelKey.Value.IsDown() && !SettingsPanelUI.Typing)
+		if (_panelKey.Value.IsDown() && !CompanionInputCapture.Blocked)
 		{
 			SettingsPanelUI.TogglePanel();
 		}
-		if (_diagKey.Value.IsDown() && flag && !SettingsPanelUI.Typing)
+		if (_diagKey.Value.IsDown() && flag && !CompanionInputCapture.Blocked)
 		{
 			DumpDiagnostics(GameData.Instance);
 		}
-		if (_overlayToggleKey.Value.IsDown() && !SettingsPanelUI.Typing)
+		if (_overlayToggleKey.Value.IsDown() && !CompanionInputCapture.Blocked)
 		{
 			_showOverlay.Value = !_showOverlay.Value;
 		}
-		if (_statusReportKey.Value.IsDown() && flag && !SettingsPanelUI.Typing)
+		if (_statusReportKey.Value.IsDown() && flag && !CompanionInputCapture.Blocked)
 		{
 			PendingNotification = "`" + BuildStatusText().Replace("\n", "  |  ");
 		}
@@ -632,7 +632,11 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         SettingsPanelUI.ResetForSceneChange();
     }
 
-    private void OnDestroy() => Companion?.Dispose();
+    private void OnDestroy()
+    {
+        SettingsPanelUI.ResetForSceneChange();
+        Companion?.Dispose();
+    }
 
     private int GetOrderMode(GameData gd)
     {

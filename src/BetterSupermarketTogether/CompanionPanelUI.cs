@@ -16,6 +16,7 @@ internal static partial class SettingsPanelUI
     private static FirstPersonController _pausedPlayer;
     private static bool _wasPlayerEnabled, _wasCursorVisible, _companionOpen, _eraseArmed;
     private static CursorLockMode _cursorLock;
+    internal static bool CompanionOpen => _companionOpen && PanelOpen;
     internal static bool Typing => EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null && EventSystem.current.currentSelectedGameObject.GetComponent<InputField>()?.isFocused == true;
     private static DeepSeekCompanion Companion => BetterSupermarketPlugin.Instance?.Companion;
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.4.5 — 2026-11-02
+
+- Show a DeepSeek model portrait for the bound employee in native assignment, dismissal list and employee detail panels. Match the live employee object and slot, never replace shared prefab sprites or applicant portraits.
+- Render one 256px portrait from the authored model during avatar loading. Restore native icons on unbind, disable or employee replacement; preserve native icons if portrait generation fails. Temporary camera/clone/render target are cleaned up.
+- Release build verified against installed game assemblies. In-game framing and UI appearance remain unverified; portrait becomes available after the companion avatar loads.
+
+## 1.4.4 — 2026-11-02
+
+- Clarify the supermarket-assistant prompt: current player work/delegation requests already authorize supported finite actions. Inspect then execute without redundant approval; retain clarification for ambiguous targets and unsupported actions.
+- Capture Rewired button and axis reads while F7 is open or a mod text field has focus. Preserve Unity text/mouse events, suppress mod shortcuts, and wait for held keyboard/mouse input plus its release frame before restoring gameplay input.
+- Restore panel/player state when the plugin is destroyed. No live game or live API acceptance yet.
+
+## 1.4.3 — 2026-11-02
+
+- Default staff dispatch to one confirmed work cycle followed by safe restoration of the original role. Add optional duration and explicit permanent continuous assignments; temporary rest defaults to 120 seconds. Preserve the initial role across replacement temporary orders, respect manual overrides, bound restoration retries, and time out no-progress cycles after 15 minutes.
+- Finite personal companion plans also return to the original role instead of always resting; assign_work defaults to one cycle (rest/autonomy use 120 seconds). Cancelling temporary duties schedules safe restoration.
+- Add a rare idle-only rice break: choose uniformly among reachable, stocked Rice/Basmati Rice/Long Grain Rice, walk to the shelf, consume one unit through native NPCGetsItemFromRow, and play a local eight-second procedural bowl/spoon animation. First and subsequent opportunities are 20–40 minutes apart, at most once per game day. Missing stock/path/visuals do not debit inventory.
+- Add RiceEasterEgg configuration (enabled by default), interruption cleanup and localized F7 consumption notices. Model context receives the latest rice event. This is a stylized visual gag using a rice product unit; it does not model cooking.
+- Pass 275 checks and Release build against local game assemblies. New coverage includes original-role restoration, delayed handoff, explicit durations, cancellation/manual overrides, rare-event gating, native rest state 1 and exact one-unit consumption. No live API, game stock or save was used for these tests. Live animation/network acceptance remains pending.
+
+## 1.4.2 — 2026-11-02
+
+- Add inspect_staff, assign_staff and cancel_staff: player-directed, host-only assignments to other hired employees, using non-recycled session IDs tied to employee objects and UI slots. Validate the whole batch before queueing; exclude customers and the bound companion.
+- Queue up to 64 role changes, wait for safe handoff, expire after 180 game seconds, and verify the native role/priority after invocation. Manual overrides, dismissal/replacement, rebind, shop reset and disable cancel stale work. Native autonomous mode retains its existing bound-employee scope.
+- Show pending counts and localized outcomes in F7; include recent dispatch outcomes in the next model context. Applied roles remain in effect after pending commands are cancelled.
+- Include foot/grip IK and authored VRM secondary-motion preview from this session. Runtime animation and staff-command acceptance are still pending.
+- Pass 244 checks and Release build against local game assemblies. Catch test-runner failures, print diagnostics and return exit code 1 instead of allowing Windows crash dialogs; controlled failure-path probe passed. No live API requests or game-save changes.
+
 ## 1.4.1 — 2026-11-02
 
 - Centralize companion plan labels, progress, errors, autonomy and cache captions in the shared 252-entry `ModText.Catalog.cs`. Remove whole-summary substring replacement and inline bilingual work messages.

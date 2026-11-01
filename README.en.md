@@ -1,5 +1,9 @@
 # Better Supermarket Together
 
+**1.4.3 restores original roles after temporary duties and adds a rare rice break.** While resting empty-handed without a plan, the companion can approach a stocked shelf, consume one randomly selected rice variety and play an eight-second bowl/spoon pose. The cooldown is 20–40 minutes of game time, at most once per game day. 275 automated checks pass; in-game animation and multiplayer acceptance remain pending. See [role return and rice break](docs/DEEPSEEK-RICE-AND-RETURN.md).
+
+**1.4.2 adds staff coordination through DeepSeek.** Ask in F7 to assign other hired employees by name or employee number, including multi-employee batches, safe handoff, cancellation and confirmed role results. Includes the avatar motion preview. 244 automated checks pass; in-game dispatch and animation acceptance remain pending. See [staff commands](docs/DEEPSEEK-STAFF-COMMANDS.md).
+
 **1.4.1 centralizes companion UI translations.** Work states, errors, steps and cache captions share one Chinese/English catalog. New execution notices can switch language after reload; explicit plan phases remain independent of displayed text. See [companion localization](docs/COMPANION-LOCALIZATION.md).
 
 **1.4.0 adds autonomous companion planning, product/shelf restocking targets, host following and ordered tasks.** F7 provides autonomy, stop-plan and aim-at-shelf controls. Plans hand over carried goods safely and stop on failure. Autonomy is opt-in for each shop session, with a default 120-second minimum decision interval and 20 decisions per rolling hour. See [work plans](docs/DEEPSEEK-WORK-PLANS.md).

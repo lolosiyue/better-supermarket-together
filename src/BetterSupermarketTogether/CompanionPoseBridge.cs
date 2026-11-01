@@ -24,6 +24,14 @@ internal sealed class CompanionPoseBridge
     private readonly Vector3 _sourceHipBind, _targetHipBind;
     private readonly Vector3 _sourceFeet, _targetFeet;
     private readonly float _positionScale;
+    private sealed class Limb
+    {
+        internal Transform Upper, Lower, End, Source;
+        internal Vector3 Offset;
+        internal bool Hand,Right;
+    }
+    private readonly List<Limb> _limbs = new List<Limb>();
+    private float _gripWeight;
     internal int Count => _links.Count;
 
     internal static Dictionary<string, Transform> Map(Animator animator, IEnumerable<string> roles, bool upperChest)
@@ -99,10 +107,24 @@ internal sealed class CompanionPoseBridge
         _links.Sort((a,b) => Depth(a.Target).CompareTo(Depth(b.Target)));
         _sourceHips=mapped["hips"]; _targetHips=target["hips"];
         _sourceHipBind=s("hips"); _targetHipBind=t("hips");
+        foreach (string side in new[] { "left", "right" })
+        {
+            string foot=side+"Foot";
+            Vector3 offset=_root.InverseTransformVector(visual.TransformPoint(t(foot))-_root.TransformPoint(s(foot)));
+            AddLimb(side+"UpperLeg",side+"LowerLeg",foot,false,offset,mapped,target);
+            AddLimb(side+"UpperArm",side+"LowerArm",side+"Hand",true,Vector3.zero,mapped,target);
+        }
         _originalCulling=source.cullingMode; source.cullingMode=AnimatorCullingMode.AlwaysAnimate;
     }
 
-    internal bool Apply()
+    private void AddLimb(string upper,string lower,string end,bool hand,Vector3 offset,Dictionary<string,Transform> source,Dictionary<string,Transform> target)
+    {
+        if(!target.ContainsKey(upper) || !target.ContainsKey(lower) || !target.ContainsKey(end) || !source.ContainsKey(end))return;
+        // Preserve the VRM ankle's bind-height offset, but use the game's actual stride.
+        _limbs.Add(new Limb { Upper=target[upper],Lower=target[lower],End=target[end],Source=source[end],Offset=offset,Hand=hand,Right=end.StartsWith("right") });
+    }
+
+    internal bool Apply(bool carrying=false)
     {
         if (_animator == null || _root == null || _visual == null || _sourceHips == null || _targetHips == null) return false;
         Quaternion inverseRoot=Quaternion.Inverse(_root.rotation);
@@ -116,8 +138,34 @@ internal sealed class CompanionPoseBridge
         }
         Vector3 movement=_root.InverseTransformPoint(_sourceHips.position)-_sourceHipBind;
         _targetHips.position=_visual.TransformPoint(_targetHipBind+Quaternion.Inverse(_alignment)*movement*_positionScale);
+        _gripWeight=Mathf.MoveTowards(_gripWeight,carrying?1:0,Time.deltaTime*8);
+        foreach(var limb in _limbs)
+        {
+            float weight=limb.Hand?_gripWeight:1;
+            if(weight<=0 || limb.Source==null || limb.End==null)continue;
+            Vector3 goal=Vector3.Lerp(limb.End.position,limb.Source.position+_root.TransformVector(limb.Offset),weight);
+            SolveLimb(limb,goal);
+        }
         return true;
     }
+
+    private static void SolveLimb(Limb limb,Vector3 goal)
+    {
+        if(limb.Upper==null || limb.Lower==null)return;
+        var a=limb.Upper.position; var b=limb.Lower.position; var c=limb.End.position;
+        if(!CompanionMotionMath.Solve(ToVector(a),ToVector(b),ToVector(c),ToVector(goal),out var bend,out var tip))return;
+        Quaternion endRotation=limb.End.rotation;
+        limb.Upper.rotation=Quaternion.FromToRotation(b-a,FromVector(bend)-a)*limb.Upper.rotation;
+        limb.Lower.rotation=Quaternion.FromToRotation(limb.End.position-limb.Lower.position,FromVector(tip)-limb.Lower.position)*limb.Lower.rotation;
+        limb.End.rotation=endRotation;
+    }
+    internal void PoseHand(bool right,Vector3 goal,float weight)
+    {
+        foreach(var limb in _limbs)
+            if(limb.Hand && limb.Right==right)SolveLimb(limb,Vector3.Lerp(limb.End.position,goal,weight));
+    }
+    private static System.Numerics.Vector3 ToVector(Vector3 v) => new System.Numerics.Vector3(v.x,v.y,v.z);
+    private static Vector3 FromVector(System.Numerics.Vector3 v) => new Vector3(v.X,v.Y,v.Z);
 
     internal void Restore() { if (_animator != null) _animator.cullingMode=_originalCulling; }
     private static Vector3 Position(Matrix4x4 m) => m.GetColumn(3);

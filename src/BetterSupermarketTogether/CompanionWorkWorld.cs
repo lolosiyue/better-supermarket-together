@@ -21,6 +21,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
     private readonly Dictionary<Data_Container,string> _ids = new Dictionary<Data_Container,string>();
     private readonly List<Goal> _goals = new List<Goal>();
     private NPC_Info _employee;
+    private int? _originalRole;
     private CompanionStep _step;
     private int _nextId=1, _expectedRole, _followPreviousRole;
     private bool _handoff, _following, _oldStopped, _externalOverride;
@@ -34,7 +35,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
     internal NPC_Info Employee => _employee;
     private NPC_Manager Manager => NPC_Manager.Instance;
     private Transform Shelves => Manager?.shelvesOBJ != null ? Manager.shelvesOBJ.transform : null;
-    internal void Bind(NPC_Info employee) { _employee=employee; }
+    internal void Bind(NPC_Info employee) { if(_employee!=employee)_originalRole=null;_employee=employee; }
     internal bool Targeted => _step?.Kind=="restock";
     internal static bool HasTarget(NPC_Info employee)
     {
@@ -159,6 +160,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
     public ModText.Message Start(CompanionStep step)
     {
         if(_employee==null || Manager==null || !Manager.isServer)return "員工目前不可用。";
+        if(!_originalRole.HasValue)_originalRole=_employee.taskPriority;
         _step=step;_handoff=false;_externalOverride=false;_goals.Clear();
         int role=step.Kind=="follow"?0:step.Kind=="restock"?2:Array.IndexOf(CompanionProtocol.Roles,step.Role);
         _followPreviousRole=_employee.taskPriority;
@@ -293,11 +295,11 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         }
         _following=false;_step=null;_handoff=false;_goals.Clear();
     }
-    public void Rest() { if(!_externalOverride && Safe)SetRole(0); }
+    public void Rest() { if(!_externalOverride && Safe && _originalRole.HasValue)SetRole(_originalRole.Value);_originalRole=null; }
     internal bool TakeExternalEvent() { bool value=_externalEvent;_externalEvent=false;return value; }
     internal void ExternalChange()
     {
-        _externalOverride=true;_externalEvent=false;
+        _originalRole=null;_externalOverride=true;_externalEvent=false;
         if(_following && _employee!=null)
         {
             var agent=_employee.GetComponent<NavMeshAgent>();
@@ -343,7 +345,7 @@ internal static class CompanionExternalAllPriorities
     private static void Prefix()
     {
         var companion=BetterSupermarketPlugin.Instance?.Companion;
-        if(companion!=null)companion.ExternalRoleChange(companion.BoundIndex);
+        if(companion!=null) { companion.StaffWorld.ExternalChange(-1);companion.ExternalRoleChange(companion.BoundIndex); }
     }
 }
 
@@ -355,9 +357,10 @@ internal static class CompanionEmployeeScope
     private static bool Prefix(NPC_Manager __instance,int __0,out NPC_Info __state)
     {
         __state=Current;Current=null;
-        if(!BetterSupermarketPlugin.EnablePlugin || !__instance.isServer || __instance.employeeParentOBJ==null || __0<0 || __0>=__instance.employeeParentOBJ.transform.childCount)return true;
+        if((!BetterSupermarketPlugin.EnablePlugin && (BetterSupermarketPlugin.Instance?.Companion?.StaffWorld.Queue.Count??0)==0 && !(BetterSupermarketPlugin.Instance?.Companion?.NeedsSafeHandoff??false)) || !__instance.isServer || __instance.employeeParentOBJ==null || __0<0 || __0>=__instance.employeeParentOBJ.transform.childCount)return true;
         Current=__instance.employeeParentOBJ.transform.GetChild(__0).GetComponent<NPC_Info>();
-        return BetterSupermarketPlugin.Instance?.Companion?.WorkWorld.BeforeNative(Current) ?? true;
+        var companion=BetterSupermarketPlugin.Instance?.Companion;
+        return !(companion?.RiceOwns(Current) ?? false) && (companion?.WorkWorld.BeforeNative(Current) ?? true) && (companion?.StaffWorld.BeforeNative(Current) ?? true);
     }
     private static void Postfix(NPC_Info __state) { Current=__state; }
     private static Exception Finalizer(Exception __exception,NPC_Info __state) { Current=__state;return __exception; }
