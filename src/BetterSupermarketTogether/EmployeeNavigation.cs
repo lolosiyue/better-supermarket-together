@@ -65,8 +65,16 @@ internal sealed class EmployeeNavigation
 
     internal bool IsAt(Vector3 destination)
     {
-        return Ready && !_agent.pathPending && _agent.pathStatus == NavMeshPathStatus.PathComplete && TrySample(destination, out var point) &&
-            Vector3.Distance(_agent.transform.position, point) <= Mathf.Max(1.25f, _agent.stoppingDistance + 0.3f);
+        if (!Ready || _agent.pathPending || _agent.pathStatus != NavMeshPathStatus.PathComplete || !TrySample(destination, out var point)) return false;
+        float reach = Mathf.Max(1.25f, _agent.stoppingDistance + 0.3f);
+        if (Vector3.Distance(_agent.transform.position, point) > reach ||
+            _agent.hasPath && (_agent.remainingDistance > _agent.stoppingDistance + 0.3f || _agent.velocity.sqrMagnitude > 0.01f)) return false;
+        // A point can be nearby across a wall while its walkable route is much longer.
+        if (!NavMesh.CalculatePath(_agent.nextPosition, point, Filter, _path) || _path.status != NavMeshPathStatus.PathComplete) return false;
+        float distance = 0f;
+        var corners = _path.corners;
+        for (int i = 1; i < corners.Length; i++) distance += Vector3.Distance(corners[i - 1], corners[i]);
+        return distance <= reach;
     }
 
     internal static void Block(NPC_Info employee, Vector3 destination)
