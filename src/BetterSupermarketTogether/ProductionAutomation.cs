@@ -30,6 +30,8 @@ internal static class ProductionAutomation
 
 	internal static int QueueThreshold = 0;
 
+    internal static bool OnlyShelfRecipes = true;
+
 	private static MethodInfo _cmdQueue;
 
 	private static MethodInfo _cmdTray;
@@ -181,8 +183,9 @@ internal static class ProductionAutomation
 			}
 		}
 		Dictionary<string, int> dictionary = new Dictionary<string, int>();
+		var shelfRecipes = new HashSet<string>();
 		AccumulateVariantStock(npc.manufacturingStorageShelvesOBJ.transform, dictionary);
-		AccumulateVariantStock(npc.manufacturingShelvesOBJ.transform, dictionary);
+		AccumulateVariantStock(npc.manufacturingShelvesOBJ.transform, dictionary, shelfRecipes);
 		if (npc.manufacturingBoxesOBJ != null)
 		{
 			Transform transform2 = npc.manufacturingBoxesOBJ.transform;
@@ -197,7 +200,9 @@ internal static class ProductionAutomation
 			}
 		}
 		SaveDiscovered();
-		Status = $"已知配方 {KnownVariants.Count}，門檻 {QueueThreshold}";
+		Status = OnlyShelfRecipes
+            ? $"貨架配方 {shelfRecipes.Count}，門檻 {QueueThreshold}"
+            : $"已知配方 {KnownVariants.Count}，門檻 {QueueThreshold}";
 		int num = 0;
 		foreach (KeyValuePair<string, string> knownVariant in KnownVariants)
 		{
@@ -206,6 +211,7 @@ internal static class ProductionAutomation
 				break;
 			}
 			string key2 = knownVariant.Key;
+            if (OnlyShelfRecipes && !shelfRecipes.Contains(key2)) continue;
 			int num2 = key2.IndexOf('|');
 			if (num2 <= 0 || !int.TryParse(key2.Substring(0, num2), out var result))
 			{
@@ -270,7 +276,7 @@ internal static class ProductionAutomation
                 _cmdQueue.Invoke(manufacturingProduction3, new object[2] { result, text });
                 if (manufacturingProduction3.productQueue.Count <= previousQueue) continue;
                 num++;
-				BetterSupermarketPlugin.Log.LogInfo($"Auto-production: queued '{ManufacturingName(result)}' variant (production stock {num3} <= {QueueThreshold}).");
+				BetterSupermarketPlugin.Log.LogInfo($"Auto-production: queued '{ManufacturingName(result)}' recipe={text}, target={(OnlyShelfRecipes ? "sales-shelf" : "history")} (stock {num3} <= {QueueThreshold}).");
 			}
 		}
 		if ((num > 0) & notify)
@@ -410,7 +416,7 @@ internal static class ProductionAutomation
 		}
 	}
 
-	private static void AccumulateVariantStock(Transform containers, Dictionary<string, int> stock)
+	private static void AccumulateVariantStock(Transform containers, Dictionary<string, int> stock, HashSet<string> shelfRecipes = null)
 	{
 		for (int i = 0; i < containers.childCount; i++)
 		{
@@ -430,6 +436,7 @@ internal static class ProductionAutomation
 					string text = ((j / 2 < combinableInfoArray.Length) ? combinableInfoArray[j / 2] : "");
 					Learn(num, text);
 					string key = num + "|" + RepairPolicies.NormalizeRecipe(text);
+					shelfRecipes?.Add(key);
 					stock[key] = MfgS(stock, key) + num2;
 				}
 			}

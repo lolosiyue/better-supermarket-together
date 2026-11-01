@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.0")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.1")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.0";
+	public const string PluginVersion = "1.2.1";
 
 	internal static ManualLogSource Log;
 
@@ -126,6 +126,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private ConfigEntry<int> _warehouseConsolidateMoves;
 
 	private ConfigEntry<bool> _productionAutoQueue;
+
+    private ConfigEntry<bool> _productionOnlyShelfRecipes;
 
 	private ConfigEntry<bool> _productionAutoTray;
 
@@ -352,6 +354,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		_warehouseConsolidateMoves = Config.Bind("Warehouse", "ConsolidateMovesPerNight", 30, new ConfigDescription("每晚最多整理幾個箱子（避免一次大搬風暴）", new AcceptableValueRange<int>(1, 200)));
 		_i18nOverhaul = Config.Bind("Localization", "OverhaulChinese", defaultValue: true, "繁中本地化修正：以英文原文為準重新翻譯的繁中字串表，覆蓋遊戲內建的機翻（含烏克蘭文殘留）。僅在遊戲語言為中文時生效。");
 		_productionAutoQueue = Config.Bind("Production", "AutoQueueProducts", defaultValue: true, "生產部成品存量達到 AutoQueueThreshold 門檻時，自動在工作台排程已知配方，使用生產員工生產。");
+        _productionOnlyShelfRecipes = Config.Bind("Production", "OnlyShelfRecipes", true, "只自動補目前銷售貨架指定的配方（空貨架保留的配方也算）。舊箱子及歷史配方只計庫存，不會單獨觸發補產；false 則補所有歷史配方。");
 		_learnedCombinables = Config.Bind("Production", "LearnedCombinables", "", "已學習的客製配方（自動維護，請勿手改）——讓自動排程照你用過的配方生產。");
 		_knownVariants = Config.Bind("Production", "KnownVariants", "", "已知配方變體（自動維護，請勿手改）——每個成品變體的配方標籤，重啟後自動排程仍照配方做。");
 		ProductionAutomation.LoadVariants = LoadLearnedVariants;
@@ -390,7 +393,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.0", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.1", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -401,7 +404,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.0 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.1 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -530,6 +533,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 				try
 				{
 					ProductionAutomation.QueueThreshold = _productionQueueThreshold.Value;
+                    ProductionAutomation.OnlyShelfRecipes = _productionOnlyShelfRecipes.Value;
 					ProductionAutomation.Run(instance6, instance3.GetComponent<ManagerBlackboard>(), _productionAutoQueue.Value ? 2 : 0, _productionAutoTray.Value ? 3 : 0, _notifications.Value);
 				}
 				catch (Exception ex3)
@@ -999,7 +1003,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.0 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.1 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -1430,4 +1434,5 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		return true;
 	}
 }
+
 

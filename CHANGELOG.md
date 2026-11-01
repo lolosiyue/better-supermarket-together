@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 — 2026-11-01
+
+- Replenish only recipes assigned to sales shelves by default, including empty labeled shelves.
+- Keep historical recipes and leftover boxes as stock information without automatically replenishing obsolete variants.
+- Include the exact recipe and target source in automatic-production logs.
+- Preserve existing inventory and queued jobs; `Production.OnlyShelfRecipes = false` restores historical-target behavior.
+
 ## 1.2.0 — 2026-11-01
 
 - Rename the mod and its assembly to Better Supermarket Together.

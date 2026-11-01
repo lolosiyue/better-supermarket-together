@@ -15,7 +15,7 @@
 | 聰明補貨 | 調整 NPC 的補貨及搬箱選擇，優先處理缺貨比例較高的貨架、優先清出剩餘量較少的箱子，並避開已被其他員工占用的箱子。 |
 | 倉庫集中擺放 | 員工放箱入倉時，優先選擇已存放同種商品的架子，減少分散存放。 |
 | 夜間倉庫整理 | 打烊後將同種商品集中到主要存放架。預設 23:00 執行，每晚最多搬移 30 箱，可自行調整。 |
-| 自動生產排程 | 記住生產貨架、箱子及現有排程的成品配方，按生產部存量門檻補上排程，保留同產品的不同客製變體，並避免重複排程。 |
+| 自動生產排程 | 預設只補銷售貨架指定的配方，包含已售罄但保留標籤的貨架。同種產品的客製變體分開計算庫存；歷史配方及舊箱子不會單獨成為補產目標。 |
 | 自動補入生產原料 | 從一般倉庫取用基礎及客製配方所需的原料，加入工作台托盤；實際生產沿用遊戲的生產員工與工作台。 |
 | 自動定價 | 每天指定時間依目前進貨成本更新已解鎖商品的售價，也會在解鎖商品後重新評估。預設售價為成本的 200%，可調整倍率及小數處理。 |
 | 自動促銷 | 每天從符合最低庫存的商品中選擇促銷品；可使用庫存與近期銷量估計滯銷程度，沒有銷量資料時退回庫存排序。預設折扣 15%。 |
@@ -86,6 +86,7 @@ EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
 | `Restock.MinTotalStockProduction` | `100` | 生產原料的補貨門檻。 |
 | `Restock.GroupMinStock` | `4:100,5:100` | 分類門檻；4 為衛生用品，5 為清潔用品。 |
 | `Production.AutoQueueThreshold` | `0` | 生產部成品存量 ≤ 此值時補上生產排程。 |
+| `Production.OnlyShelfRecipes` | `true` | 只補銷售貨架指定的配方；`false` 則沿用所有歷史配方。 |
 | `Pricing.Percentage` | `200` | 售價為目前成本的百分比。 |
 | `Promo.Discount` | `15` | 促銷折扣百分比。 |
 | `Staff.ExtraSlotBaseCost` | `5000` | 第 1 個額外名額價格，後續按購買次數增加。 |
@@ -102,13 +103,13 @@ EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.0.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
+`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.1.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
 
 ## 使用範圍與目前狀態
 
 - 自動採購會花費遊戲資金；可自行調整門檻與資金保留額。生產仍需要配方、原料、工作台及生產員工。
 - 多人遊戲建議由主機安裝並保留 `OnlyHost = true`。員工改名與名額購買由主機操作。
-- 本次 1.2.0 完成編譯確認，沒有重新執行完整對局或 GUI 驗收；英文隨機風格的遊戲內外觀仍待實際遊玩確認。
+- 本次 1.2.1 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
 - 英文 README 提供英文使用說明；目前多數插件設定介面仍使用繁體中文。
 - 回報問題時請提供遊戲版本、插件版本與相關日誌片段。
 
