@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.5 — 2026-11-01
+
+- Separate ordinary purchasing inventory from manufactured-product IDs, including carried boxes; count actual tray ingredients instead of finished goods.
+- Use the same corrected on-hand counts for promotion ranking.
+- Detect idle restock/storage employees from current actions and wait targets, ignoring stale completed-task fields.
+- Count pending cargo and wait for delivery before purchasing the same product again.
+- Charge order limits and cooldowns only after the game accepts a purchase.
+- Retry ingredient classification after production data loads, and recognize known optional ingredients.
+- Add bilingual per-product F11 stock and skip-reason diagnostics, including the last purchase outcome.
+
 ## 1.2.4 — 2026-11-01
 
 - Reserve whole destination shelves for ordinary and manufactured-product restocking, rather than individual rows.

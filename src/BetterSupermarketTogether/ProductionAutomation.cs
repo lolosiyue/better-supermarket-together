@@ -46,34 +46,30 @@ internal static class ProductionAutomation
 
 	private static HashSet<int> _ingredientPids;
 
-	internal static bool IsProductionIngredient(int productId)
-	{
-		if (_ingredientPids == null)
-		{
-			_ingredientPids = new HashSet<int>();
-			ManufacturingBase instance = ManufacturingBase.Instance;
-			if (instance != null && AccessTools.Field(typeof(ManufacturingBase), "baseRecipes")?.GetValue(instance) is string[] array)
-			{
-				string[] array2 = array;
-				for (int i = 0; i < array2.Length; i++)
-				{
-					string[] array3 = array2[i].Split(new char[1] { '|' });
-					for (int j = 0; j < array3.Length; j++)
-					{
-						string[] array4 = array3[j].Split(new char[1] { '-' });
-						for (int k = 0; k < array4.Length; k++)
-						{
-							if (int.TryParse(array4[k], out var result) && result >= 0)
-							{
-								_ingredientPids.Add(result);
-							}
-						}
-					}
-				}
-			}
-		}
-		return _ingredientPids.Contains(productId);
-	}
+    internal static bool IsProductionIngredient(int productId)
+    {
+        if (_ingredientPids == null)
+        {
+            var instance = ManufacturingBase.Instance;
+            // Retry after loading rather than permanently caching an empty ingredient set.
+            if (instance == null || !(AccessTools.Field(typeof(ManufacturingBase), "baseRecipes")?.GetValue(instance) is string[] recipes) || recipes.Length == 0)
+                return false;
+            _ingredientPids = new HashSet<int>();
+            foreach (string recipe in recipes)
+            {
+                foreach (string token in (recipe ?? "").Split('|', '-'))
+                    if (int.TryParse(token, out int id) && id >= 0 && id != 999) _ingredientPids.Add(id);
+            }
+        }
+        if (_ingredientPids.Contains(productId)) return true;
+        LoadPersistedVariants();
+        foreach (string recipe in KnownVariants.Values)
+        {
+            foreach (string token in recipe.Split('-'))
+                if (int.TryParse(token, out int id) && id != 999 && id == productId) return true;
+        }
+        return false;
+    }
 
 	public static void LoadPersistedVariants()
 	{

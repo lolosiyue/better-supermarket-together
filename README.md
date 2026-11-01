@@ -52,9 +52,17 @@
 | F10 → 員工改名 → 隨機風格 | 切換 `中文 / Chinese` 與 `英文 / English`，再點個別「隨機」或「全部隨機改名」。切換風格本身不會更改員工名字。 |
 | F8 | 開關左上角狀態列。 |
 | F9 | 顯示完整狀態報告。 |
-| F11 | 將員工、名額、配方及存貨資料寫入 `BepInEx/LogOutput.log`，方便回報問題。 |
+| F11 | 將員工、名額、配方、各商品存貨與未下單原因寫入 `BepInEx/LogOutput.log`，方便回報問題。 |
 
 建議先打開管理看板再操作 F10 面板，方便使用游標。快捷鍵可在設定檔中調整。
+
+## 商品沒有自動採購時
+
+採購門檻使用「備用庫存」：一般倉庫＋地上普通箱子＋員工／玩家手持普通箱子＋工作台托盤原料（`IncludeProductionStock` 開啟時）＋已購買但尚未送達的商品。銷售貨架存量不算入備用庫存；生產成品使用另一套商品編號，也不會混算。已經在送貨佇列中的商品會等送達後再評估。
+
+按 F11 後，在日誌搜尋 `RESTOCK #商品編號` 或商品名稱。每項會列出貨架、倉庫、地面、手持、托盤、待送貨、補貨門檻，以及目前第一個阻擋原因：時段、庫存足夠、貨架門檻、當天未出現、連續確認、當日／當夜次數上限、等待員工或冷卻。`lastOrder` 另列最近一次採購成功或失敗的結果。F11 只讀取狀態，不會下單或增加確認次數。
+
+每日／每夜次數限制與冷卻仍然生效。閒置判斷使用員工目前的動作及等待狀態，避免已完成任務留下的資料持續阻止採購。更新 DLL 後需重開遊戲；可在 F9 狀態報告確認載入版本。
 
 ## 設定檔
 
@@ -105,13 +113,13 @@ NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.4.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
+`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.5.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
 
 ## 使用範圍與目前狀態
 
 - 自動採購會花費遊戲資金；可自行調整門檻與資金保留額。生產仍需要配方、原料、工作台及生產員工。
 - 多人遊戲建議由主機安裝並保留 `OnlyHost = true`。員工改名與名額購買由主機操作。
-- 本次 1.2.4 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
+- 本次 1.2.5 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
 - 英文 README 提供英文使用說明；目前多數插件設定介面仍使用繁體中文。
 - 回報問題時請提供遊戲版本、插件版本與相關日誌片段。
 

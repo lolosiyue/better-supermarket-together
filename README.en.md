@@ -52,9 +52,17 @@ When upgrading from AutoRestock2230, remove or disable the old `AutoRestock2230.
 | F10 → 員工改名 → 隨機風格 | Switch between `中文 / Chinese` and `英文 / English`, then use an individual random-name button or randomize everyone. Switching the style alone does not rename anyone. |
 | F8 | Toggle the top-left status overlay. |
 | F9 | Show the full status report. |
-| F11 | Write employee, capacity, recipe, and stock diagnostics to `BepInEx/LogOutput.log`. |
+| F11 | Write employee, capacity, recipe, per-product stock, and purchase-skip diagnostics to `BepInEx/LogOutput.log`. |
 
 Open the manager board before using the F10 panel so the cursor is available. Keyboard shortcuts are configurable.
+
+## When a product is not automatically purchased
+
+Purchasing compares the minimum against reserve stock: ordinary warehouse goods, ordinary boxes on the ground or held by employees/players, ingredients on workbench trays (when `IncludeProductionStock` is enabled), and purchased goods awaiting delivery. Sales-shelf stock is excluded from this reserve. Manufactured goods use a separate product-ID range and are never counted as ordinary goods. Products already awaiting delivery are evaluated again after delivery.
+
+Press F11 and search the log for `RESTOCK #productID` or the product name. Each entry shows shelf, warehouse, ground, held, tray, pending-delivery and reserve quantities, the minimum, and the first current blocking condition: time window, sufficient reserve, shelf threshold, unseen product, shortage confirmation, daily/nightly order limit, idle employee, or cooldown. `lastOrder` records the most recent purchase success or failure. F11 does not purchase anything or advance confirmation counters.
+
+Order limits and cooldowns still apply. The idle gate uses the employee's current action and wait target, avoiding stale data left by completed tasks. Restart the game after replacing the DLL; F9 shows the loaded version.
 
 ## Configuration
 
@@ -105,13 +113,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.4.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.5.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
-- Version 1.2.4 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.5 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 

@@ -18,6 +18,10 @@ internal static class RestockAssignments
             WaitTargets.GetValue(employee, _ => new WaitTarget()).State = targetState;
     }
 
+    internal static bool IsWaitingFor(NPC_Info employee, int targetState) =>
+        employee != null && employee.state == -1 && employee.playingCoroutine &&
+        WaitTargets.TryGetValue(employee, out var wait) && wait.State == targetState;
+
     private static bool IsRestocking(NPC_Info employee, bool manufacturing)
     {
         if (employee == null || !employee.isEmployee ||
@@ -28,8 +32,7 @@ internal static class RestockAssignments
         int placing = manufacturing ? 44 : 4;
         if (employee.state >= pickup && employee.state <= placing) return true;
         // Placement pauses between groups of items; retain the shelf during that pause.
-        return employee.state == -1 && employee.playingCoroutine &&
-            WaitTargets.TryGetValue(employee, out var wait) && wait.State == placing;
+        return IsWaitingFor(employee, placing);
     }
 
     internal static void Collect(NPC_Manager manager, GameObject requester, bool manufacturing,

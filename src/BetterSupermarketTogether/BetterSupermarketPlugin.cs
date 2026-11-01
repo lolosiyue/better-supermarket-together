@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.4")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.5")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.4";
+	public const string PluginVersion = "1.2.5";
 
 	internal static ManualLogSource Log;
 
@@ -188,10 +188,6 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private float _nextUiCheck;
 
-	private MethodInfo _getExistences;
-
-	private bool _warnedReflection;
-
 	private float _nextScanTime;
 
 	private readonly Dictionary<int, int> _zeroStreak = new Dictionary<int, int>();
@@ -203,6 +199,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private readonly Dictionary<int, int> _ordersThisNight = new Dictionary<int, int>();
 
 	private readonly Dictionary<int, int> _ordersThisDaytime = new Dictionary<int, int>();
+
+    private readonly Dictionary<int, string> _lastOrderOutcome = new();
 
 	private readonly HashSet<int> _seenProducts = new HashSet<int>();
 
@@ -340,7 +338,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		_onlySeenProducts = Config.Bind("Safety", "OnlySeenProducts", defaultValue: true, "只自動補「當天有出現在任何地方(貨架/倉庫/箱子)」的產品，避免把已解鎖但沒在賣的產品也訂一遍");
 		_requireLowShelves = Config.Bind("Safety", "RequireLowShelves", defaultValue: false, "開啟後：除了倉庫為 0，還要求貨架上該產品低於 ShelfThreshold 才下單");
 		_shelfThreshold = Config.Bind("Safety", "ShelfThreshold", 10, new ConfigDescription("RequireLowShelves 開啟時使用的貨架存量門檻", new AcceptableValueRange<int>(0, 100000)));
-		_includeProductionStock = Config.Bind("Safety", "IncludeProductionStock", defaultValue: true, "把生產部容器內的原料存量也納入缺貨判斷：生產部原料全部用完時，22:30 後會自動下單補原料（成品無法購買，只能生產）");
+		_includeProductionStock = Config.Bind("Safety", "IncludeProductionStock", defaultValue: true, "把工作台托盤內的一般商品原料納入缺貨判斷；生產成品使用不同編號，不算入一般商品庫存");
 		_boxesPerProduct = Config.Bind("Order", "BoxesPerProduct", 1, new ConfigDescription("每個缺貨產品一次訂幾箱", new AcceptableValueRange<int>(1, 20)));
 		_maxOrdersPerProductPerNight = Config.Bind("Order", "MaxOrdersPerProductPerNight", 1, new ConfigDescription("每個產品一晚最多自動下單幾次", new AcceptableValueRange<int>(1, 20)));
 		_reorderCooldownSeconds = Config.Bind("Order", "ReorderCooldownSeconds", 300f, new ConfigDescription("同一產品兩次自動下單的最小間隔（現實秒）", new AcceptableValueRange<float>(30f, 3600f)));
@@ -414,7 +412,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.4", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.5", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -425,7 +423,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.4 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.5 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -508,6 +506,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_ordersThisDaytime.Clear();
 			_zeroStreak.Clear();
 			_seenProducts.Clear();
+            _lastOrderOutcome.Clear();
 		}
 		bool isSupermarketOpen = instance3.isSupermarketOpen;
 		if ((_autoOpenOrderDepartment.Value & isSupermarketOpen) && !_wasStoreOpen)
@@ -582,15 +581,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		if (!_ordering && !(Time.unscaledTime < _nextScanTime))
 		{
 			_nextScanTime = Time.unscaledTime + Mathf.Max(2f, _checkIntervalSeconds.Value);
-			int num2 = 0;
-			if (instance3.timeOfDay >= _orderAfterHour.Value && instance3.timeOfDay <= _stopBeforeHour.Value)
-			{
-				num2 = 1;
-			}
-			else if (_daytimeEnable.Value && (!_daytimeOnlyWhenOpen.Value || instance3.isSupermarketOpen) && instance3.timeOfDay >= _daytimeStartHour.Value && instance3.timeOfDay <= _daytimeEndHour.Value)
-			{
-				num2 = 2;
-			}
+            int num2 = GetOrderMode(instance3);
 			if (num2 == 0)
 			{
 				_zeroStreak.Clear();
@@ -599,147 +590,100 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		}
 	}
 
-	private void Scan(GameData gd, int orderMode)
-	{
-		ProductListing instance = ProductListing.Instance;
-		if (instance == null || instance.productsData == null || instance.availableProducts == null)
-		{
-			return;
-		}
-		ManagerBlackboard component = gd.GetComponent<ManagerBlackboard>();
-		if (component == null)
-		{
-			return;
-		}
-		if (_getExistences == null)
-		{
-			_getExistences = AccessTools.Method(typeof(ManagerBlackboard), "GetProductsExistences");
-			if (_getExistences == null)
-			{
-				if (!_warnedReflection)
-				{
-					Log.LogWarning("ManagerBlackboard.GetProductsExistences not found - game version may be incompatible.");
-					_warnedReflection = true;
-				}
-				return;
-			}
-		}
-		Dictionary<int, int> dictionary = null;
-		if (_includeProductionStock.Value)
-		{
-			dictionary = new Dictionary<int, int>();
-			ManufacturingContainer[] array = UnityEngine.Object.FindObjectsByType<ManufacturingContainer>(FindObjectsSortMode.None);
-			foreach (ManufacturingContainer manufacturingContainer in array)
-			{
-				if (manufacturingContainer == null)
-				{
-					continue;
-				}
-				int[] productInfoArray = manufacturingContainer.productInfoArray;
-				if (productInfoArray == null)
-				{
-					continue;
-				}
-				for (int j = 0; j + 1 < productInfoArray.Length; j += 2)
-				{
-					int num = productInfoArray[j];
-					int num2 = productInfoArray[j + 1];
-					if (num >= 0 && num2 > 0)
-					{
-						dictionary.TryGetValue(num, out var value);
-						dictionary[num] = value + num2;
-					}
-				}
-			}
-		}
-		List<int> list = null;
-		_idleEmployeeExists = HasIdleStorageEmployee(NPC_Manager.Instance);
-		foreach (int item in new List<int>(instance.availableProducts))
-		{
-			if (item < 0 || item >= instance.productsData.Length || instance.productsData[item] == null)
-			{
-				continue;
-			}
-			int[] array2;
-			try
-			{
-				array2 = (int[])_getExistences.Invoke(component, new object[1] { item });
-			}
-			catch (Exception ex)
-			{
-				if (!_warnedReflection)
-				{
-					Log.LogWarning("GetProductsExistences invoke failed: " + ex.Message);
-					_warnedReflection = true;
-				}
-				return;
-			}
-			if (array2 == null || array2.Length < 3)
-			{
-				continue;
-			}
-			int num3 = array2[0];
-			int num4 = array2[1];
-			int num5 = array2[2];
-			int value2 = 0;
-			dictionary?.TryGetValue(item, out value2);
-			if (num3 > 0 || num4 > 0 || num5 > 0 || value2 > 0)
-			{
-				_seenProducts.Add(item);
-			}
-			if (orderMode == 0)
-			{
-				continue;
-			}
-			int num6 = MinStockFor(item, instance);
-			int num7 = num4 + num5 + value2;
-			if (!((num6 <= 0) ? (num7 == 0) : (num7 < num6)))
-			{
-				_zeroStreak.Remove(item);
-				continue;
-			}
-			bool flag = ((orderMode == 1) ? _requireLowShelves.Value : _daytimeRequireLowShelves.Value);
-			int num8 = ((orderMode == 1) ? _shelfThreshold.Value : _daytimeShelfThreshold.Value);
-			if (flag && num3 > num8)
-			{
-				_zeroStreak.Remove(item);
-			}
-			else
-			{
-				if (_onlySeenProducts.Value && !_seenProducts.Contains(item))
-				{
-					continue;
-				}
-				_zeroStreak.TryGetValue(item, out var value3);
-				value3++;
-				_zeroStreak[item] = value3;
-				if (value3 < Mathf.Max(1, _zeroConfirmScans.Value))
-				{
-					continue;
-				}
-				Dictionary<int, int> dictionary2 = ((orderMode == 1) ? _ordersThisNight : _ordersThisDaytime);
-				int num9 = ((orderMode == 1) ? _maxOrdersPerProductPerNight.Value : _daytimeMaxOrdersPerProductPerDay.Value);
-				if ((dictionary2.TryGetValue(item, out var value4) && value4 >= num9) || (_gateOnIdleEmployee.Value && !_idleEmployeeExists))
-				{
-					continue;
-				}
-				((orderMode == 1) ? _cooldownUntilNight : _cooldownUntilDaytime).TryGetValue(item, out var value5);
-				if (!(Time.unscaledTime < value5))
-				{
-					if (list == null)
-					{
-						list = new List<int>();
-					}
-					list.Add(item);
-				}
-			}
-		}
-		if (list != null && list.Count > 0)
-		{
-			_ordering = true;
-			StartCoroutine(OrderRoutine(gd, component, instance, list, orderMode));
-		}
-	}
+    private int GetOrderMode(GameData gd)
+    {
+        if (gd.timeOfDay >= _orderAfterHour.Value && gd.timeOfDay <= _stopBeforeHour.Value) return 1;
+        if (_daytimeEnable.Value && (!_daytimeOnlyWhenOpen.Value || gd.isSupermarketOpen) &&
+            gd.timeOfDay >= _daytimeStartHour.Value && gd.timeOfDay <= _daytimeEndHour.Value) return 2;
+        return 0;
+    }
+
+    private void Scan(GameData gd, int orderMode)
+    {
+        var listing = ProductListing.Instance;
+        var blackboard = gd.GetComponent<ManagerBlackboard>();
+        if (listing == null || listing.productsData == null || listing.availableProducts == null || blackboard == null) return;
+        var stock = RestockStockSnapshot.Capture(NPC_Manager.Instance, blackboard, listing, _includeProductionStock.Value);
+        if (stock == null) return;
+        _idleEmployeeExists = HasIdleStorageEmployee(NPC_Manager.Instance);
+        var orders = new List<int>();
+        foreach (int product in new HashSet<int>(listing.availableProducts))
+        {
+            if (product < 0 || product >= listing.productsData.Length || listing.productsData[product] == null) continue;
+            var counts = stock.Get(product);
+            if (counts.OnHand > 0 || counts.Pending > 0) _seenProducts.Add(product);
+            if (RestockSkipReason(product, counts, listing, orderMode, _idleEmployeeExists, true) == null)
+                orders.Add(product);
+        }
+        if (orders.Count == 0) return;
+        _ordering = true;
+        StartCoroutine(OrderRoutine(gd, blackboard, listing, orders, orderMode));
+    }
+
+    // Also used by F11 without changing confirmation counters or placing orders.
+    private string RestockSkipReason(int product, RestockStockSnapshot.Stock stock, ProductListing listing,
+        int orderMode, bool idleEmployee, bool advanceConfirmation)
+    {
+        if (orderMode == 0) return "outside order window / 不在採購時段";
+        if (stock.Pending > 0) return "delivery pending / 已下單等待送貨";
+        int minimum = MinStockFor(product, listing);
+        if (minimum <= 0 ? stock.Reserve > 0 : stock.Reserve >= minimum)
+        {
+            if (advanceConfirmation) _zeroStreak.Remove(product);
+            return "reserve sufficient / 備用庫存足夠";
+        }
+        bool requireLowShelf = orderMode == 1 ? _requireLowShelves.Value : _daytimeRequireLowShelves.Value;
+        int shelfLimit = orderMode == 1 ? _shelfThreshold.Value : _daytimeShelfThreshold.Value;
+        if (requireLowShelf && stock.Shelf > shelfLimit)
+        {
+            if (advanceConfirmation) _zeroStreak.Remove(product);
+            return "shelf above threshold / 貨架存量高於門檻";
+        }
+        if (_onlySeenProducts.Value && !_seenProducts.Contains(product) && stock.OnHand == 0)
+            return "not seen today / 當天尚未出現";
+        _zeroStreak.TryGetValue(product, out int confirmations);
+        if (advanceConfirmation) _zeroStreak[product] = ++confirmations;
+        int required = Mathf.Max(1, _zeroConfirmScans.Value);
+        if (confirmations < required) return $"confirming shortage / 確認缺貨 {confirmations}/{required}";
+        var dailyOrders = orderMode == 1 ? _ordersThisNight : _ordersThisDaytime;
+        int limit = orderMode == 1 ? _maxOrdersPerProductPerNight.Value : _daytimeMaxOrdersPerProductPerDay.Value;
+        dailyOrders.TryGetValue(product, out int used);
+        if (used >= limit) return $"order limit / 已達本時段次數上限 {used}/{limit}";
+        if (_gateOnIdleEmployee.Value && !idleEmployee) return "no idle employee / 等待閒置補貨或倉儲員工";
+        (orderMode == 1 ? _cooldownUntilNight : _cooldownUntilDaytime).TryGetValue(product, out float until);
+        if (Time.unscaledTime < until) return $"cooldown / 冷卻剩餘 {until - Time.unscaledTime:0} 秒";
+        return null;
+    }
+
+    private void DumpRestockDiagnostics(GameData gd)
+    {
+        var listing = ProductListing.Instance;
+        var blackboard = gd.GetComponent<ManagerBlackboard>();
+        if (listing == null || listing.productsData == null || listing.availableProducts == null || blackboard == null) return;
+        var snapshot = RestockStockSnapshot.Capture(NPC_Manager.Instance, blackboard, listing, _includeProductionStock.Value);
+        if (snapshot == null) { Log.LogInfo("RESTOCK: inventory not loaded / 存貨尚未載入"); return; }
+        int mode = GetOrderMode(gd);
+        bool idle = HasIdleStorageEmployee(NPC_Manager.Instance);
+        Log.LogInfo($"RESTOCK version={PluginVersion} enabled={_enable.Value} hostOnly={_onlyHost.Value} mode={mode} idle={idle} idleGate={_gateOnIdleEmployee.Value} ordering={_ordering} fundsBuffer={_fundsBuffer.Value:0.00}");
+        Log.LogInfo("RESTOCK reserve = warehouse + ground + held ordinary boxes + tray ingredients + pending delivery; sales shelves are excluded.");
+        foreach (int product in new SortedSet<int>(listing.availableProducts))
+        {
+            if (product < 0 || product >= listing.productsData.Length || listing.productsData[product] == null) continue;
+            var stock = snapshot.Get(product);
+            string reason = !_enable.Value ? "plugin disabled / 插件已關閉" :
+                _onlyHost.Value && !gd.isServer ? "host only / 僅主機執行" :
+                _ordering ? "purchase in progress / 正在下單" :
+                RestockSkipReason(product, stock, listing, mode, idle, false) ?? "ready for next scan / 下次掃描可下單";
+            string name = LocalizationManager.instance != null ? LocalizationManager.instance.GetLocalizationString("product" + product) : "";
+            _lastOrderOutcome.TryGetValue(product, out string lastOrder);
+            Log.LogInfo($"  RESTOCK #{product} {name}: shelf={stock.Shelf} warehouse={stock.Warehouse} ground={stock.Ground} held={stock.Held} tray={stock.Tray} pending={stock.Pending} reserve={stock.Reserve} min={MinStockFor(product, listing)} reason={reason} lastOrder={lastOrder ?? "none"}");
+        }
+    }
+
+    private void SetOrderOutcome(List<int> products, string outcome)
+    {
+        foreach (int product in products) _lastOrderOutcome[product] = outcome;
+    }
 
 	internal Dictionary<int, int> ParseGroupMinStock()
 	{
@@ -882,35 +826,22 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		return true;
 	}
 
-	private static bool HasIdleStorageEmployee(NPC_Manager npc)
-	{
-		if (npc == null || npc.employeeParentOBJ == null)
-		{
-			return false;
-		}
-		Transform transform = npc.employeeParentOBJ.transform;
-		for (int i = 0; i < transform.childCount; i++)
-		{
-			NPC_Info component = transform.GetChild(i).GetComponent<NPC_Info>();
-			if (!(component == null) && (component.taskPriority == 2 || component.taskPriority == 3) && component.boxNumberOfProducts == 0)
-			{
-				bool flag = false;
-				if (component.taskPriority == 2 && component.productAvailableArray != null && component.productAvailableArray.Length >= 1 && component.productAvailableArray[0] != -1)
-				{
-					flag = true;
-				}
-				if (component.taskPriority == 3 && (component.randomBox != null || component.currentFreeStorageIndex >= 0))
-				{
-					flag = true;
-				}
-				if (!flag && component.state <= 1)
-				{
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+    private static bool HasIdleStorageEmployee(NPC_Manager npc)
+    {
+        if (npc == null || npc.employeeParentOBJ == null) return false;
+        foreach (Transform child in npc.employeeParentOBJ.transform)
+        {
+            var employee = child.GetComponent<NPC_Info>();
+            if (employee == null || !employee.isEmployee || employee.equippedItem != 0 || employee.boxNumberOfProducts != 0) continue;
+            if (employee.taskPriority != 2 && employee.taskPriority != 3) continue;
+            // Task arrays and source indices retain old assignments after completion.
+            // Storage state 1 is pickup travel; state 10 is the idle/rest state.
+            if (employee.state == 0 || RestockAssignments.IsWaitingFor(employee, 0) ||
+                (employee.taskPriority == 2 && employee.state == 1) ||
+                (employee.taskPriority == 3 && employee.state == 10)) return true;
+        }
+        return false;
+    }
 
 	internal void KeepChosenEmployeeNames()
     {
@@ -1013,6 +944,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 					Log.LogInfo("  PROD STOCK: (production area empty)");
 				}
 			}
+            DumpRestockDiagnostics(gd);
 			Log.LogInfo("==== AR2230 DIAGNOSTICS END ====");
 		}
 		catch (Exception ex)
@@ -1024,7 +956,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.4 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.5 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -1197,6 +1129,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			}
 			if (gd.gameFunds < total + _fundsBuffer.Value)
 			{
+                SetOrderOutcome(ids, $"insufficient funds / 資金不足: need={total + _fundsBuffer.Value:F2}, have={gd.gameFunds:F2}");
 				Log.LogInfo($"Skip auto-order: not enough funds (need {total:F2}, have {gd.gameFunds:F2}).");
 				if (_notifications.Value)
 				{
@@ -1230,15 +1163,30 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			}
 			yield return new WaitForEndOfFrame();
 			yield return new WaitForEndOfFrame();
+            if (mb.shoppingTotalCharge <= 0f)
+            {
+                SetOrderOutcome(ids, "cart not ready / 購物車金額尚未準備完成");
+                Log.LogWarning("Auto-order not submitted: shopping total is zero; order limits unchanged.");
+                yield break;
+            }
 			try
 			{
 				mb.BuyCargo();
 			}
 			catch (Exception ex)
 			{
+                SetOrderOutcome(ids, "BuyCargo exception / 下單發生錯誤: " + ex.Message);
 				Log.LogError("BuyCargo failed: " + ex);
 				yield break;
 			}
+            // BuyCargo returns void, including on rejection. Only accepted purchases reset the total.
+            if (mb.shoppingTotalCharge > 0f)
+            {
+                SetOrderOutcome(ids, "purchase rejected / 遊戲未接受採購，請檢查資金與購物車");
+                Log.LogWarning("Auto-order rejected by BuyCargo; order limits unchanged.");
+                yield break;
+            }
+            SetOrderOutcome(ids, $"ordered / 已下單 day={gd.gameDay} time={gd.timeOfDay:0.00}");
 			Dictionary<int, int> dictionary2 = ((orderMode == 1) ? _ordersThisNight : _ordersThisDaytime);
 			Dictionary<int, float> dictionary3 = ((orderMode == 1) ? _cooldownUntilNight : _cooldownUntilDaytime);
 			float num4;
@@ -1316,47 +1264,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			return false;
 		}
-		if (_getExistences == null)
-		{
-			_getExistences = AccessTools.Method(typeof(ManagerBlackboard), "GetProductsExistences");
-			if (_getExistences == null)
-			{
-				if (!_warnedReflection)
-				{
-					Log.LogWarning("ManagerBlackboard.GetProductsExistences not found (promo).");
-					_warnedReflection = true;
-				}
-				return false;
-			}
-		}
-		Dictionary<int, int> dictionary = null;
-		if (_includeProductionStock.Value)
-		{
-			dictionary = new Dictionary<int, int>();
-			ManufacturingContainer[] array = UnityEngine.Object.FindObjectsByType<ManufacturingContainer>(FindObjectsSortMode.None);
-			foreach (ManufacturingContainer manufacturingContainer in array)
-			{
-				if (manufacturingContainer == null)
-				{
-					continue;
-				}
-				int[] productInfoArray = manufacturingContainer.productInfoArray;
-				if (productInfoArray == null)
-				{
-					continue;
-				}
-				for (int j = 0; j + 1 < productInfoArray.Length; j += 2)
-				{
-					int num = productInfoArray[j];
-					int num2 = productInfoArray[j + 1];
-					if (num >= 0 && num2 > 0)
-					{
-						dictionary.TryGetValue(num, out var value);
-						dictionary[num] = value + num2;
-					}
-				}
-			}
-		}
+        var stock = RestockStockSnapshot.Capture(NPC_Manager.Instance, component, instance, _includeProductionStock.Value);
+        if (stock == null) return false;
 		int num3 = -1;
 		int num4 = 0;
 		double num5 = -1.0;
@@ -1372,29 +1281,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			{
 				continue;
 			}
-			int[] array2;
-			try
-			{
-				array2 = (int[])_getExistences.Invoke(component, new object[1] { item });
-			}
-			catch (Exception ex)
-			{
-				if (!_warnedReflection)
-				{
-					Log.LogWarning("GetProductsExistences invoke failed (promo): " + ex.Message);
-					_warnedReflection = true;
-				}
-				return false;
-			}
-			if (array2 == null || array2.Length < 3)
-			{
-				continue;
-			}
-			int num7 = array2[0] + array2[1] + array2[2];
-			if (dictionary != null && dictionary.TryGetValue(item, out var value2))
-			{
-				num7 += value2;
-			}
+            int num7 = stock.Get(item).OnHand;
 			double num8 = 0.0;
 			if (list != null && item < list.Count)
 			{
