@@ -50,11 +50,16 @@ internal static class SmarterRestockerTaskPatch
 		return false;
 	}
 
+    private static void Postfix(NPC_Manager __instance, GameObject employeeRequesterOBJ, ref int[] __result)
+    {
+        RestockAssignments.GuardAssignment(__instance, employeeRequesterOBJ, false, ref __result);
+    }
+
 	private static int[] SelectTask(NPC_Manager npc, GameObject requester)
 	{
 		if (npc.shelvesOBJ == null || npc.storageOBJ == null || npc.employeeParentOBJ == null)
 		{
-			return null;
+			return RestockAssignments.NoTask();
 		}
 		List<string> list = new List<string>();
 		AddTasks(npc.lowProductCountList, list);
@@ -63,35 +68,16 @@ internal static class SmarterRestockerTaskPatch
 		AddTasks(npc.veryHighProductCountList, list);
 		if (list.Count == 0)
 		{
-			return null;
+			return RestockAssignments.NoTask();
 		}
-		HashSet<long> hashSet = new HashSet<long>();
-		HashSet<long> hashSet2 = new HashSet<long>();
-		Transform transform = npc.employeeParentOBJ.transform;
-		for (int i = 0; i < transform.childCount; i++)
-		{
-			NPC_Info component = transform.GetChild(i).GetComponent<NPC_Info>();
-			if (component == null || component.gameObject == requester || component.taskPriority != 2)
-			{
-				continue;
-			}
-			int[] productAvailableArray = component.productAvailableArray;
-			if (productAvailableArray != null && productAvailableArray.Length >= 6 && productAvailableArray[0] != -1)
-			{
-				hashSet2.Add(SlotKey(productAvailableArray[0], productAvailableArray[1]));
-				if (productAvailableArray[2] != -1)
-				{
-					hashSet.Add(SlotKey(productAvailableArray[2], productAvailableArray[3]));
-				}
-			}
-		}
+        RestockAssignments.Collect(npc, requester, false, out var occupiedShelves, out var reservedSources);
 		List<RowCandidate> list2 = new List<RowCandidate>();
 		HashSet<long> hashSet3 = new HashSet<long>();
 		Transform transform2 = npc.shelvesOBJ.transform;
 		foreach (string item in list)
 		{
 			string[] array = item.Split(new char[1] { '|' });
-			if (array.Length < 6 || !int.TryParse(array[0], out var result) || !int.TryParse(array[1], out var result2) || !int.TryParse(array[4], out var result3) || !hashSet3.Add(SlotKey(result, result2)) || hashSet2.Contains(SlotKey(result, result2)) || result < 0 || result >= transform2.childCount)
+			if (array.Length < 6 || !int.TryParse(array[0], out var result) || !int.TryParse(array[1], out var result2) || !int.TryParse(array[4], out var result3) || !hashSet3.Add(SlotKey(result, result2)) || occupiedShelves.Contains(result) || result < 0 || result >= transform2.childCount)
 			{
 				continue;
 			}
@@ -114,7 +100,7 @@ internal static class SmarterRestockerTaskPatch
 		}
 		if (list2.Count == 0)
 		{
-			return null;
+			return RestockAssignments.NoTask();
 		}
 		list2.Sort((RowCandidate a, RowCandidate b) =>
 		{
@@ -153,7 +139,7 @@ internal static class SmarterRestockerTaskPatch
 						continue;
 					}
 					int num7 = productInfoArray2[num6 + 1];
-					if (num7 > 0 && !hashSet.Contains(SlotKey(num5, num6)) && num7 < num4)
+					if (num7 > 0 && !reservedSources.Contains(SlotKey(num5, num6)) && num7 < num4)
 					{
 						num4 = num7;
 						num2 = num5;
@@ -170,7 +156,7 @@ internal static class SmarterRestockerTaskPatch
 				return new int[6] { item2.ShelfIdx, item2.ShelfPair, num2, num3, item2.ProductId, item2.ProductId };
 			}
 		}
-		return null;
+		return RestockAssignments.NoTask();
 	}
 
 	internal static void AddTasks(List<string> source, List<string> target)

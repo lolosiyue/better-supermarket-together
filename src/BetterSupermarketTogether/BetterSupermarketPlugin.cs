@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.3")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.4")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.3";
+	public const string PluginVersion = "1.2.4";
 
 	internal static ManualLogSource Log;
 
@@ -362,7 +362,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		_promoDiscount = Config.Bind("Promo", "Discount", 15, new ConfigDescription("促銷折扣 %(遊戲限制 5~45)", new AcceptableValueRange<int>(5, 45)));
 		_promoMinStock = Config.Bind("Promo", "MinStock", 50, new ConfigDescription("總庫存(貨架+倉庫+箱子+生產部)至少多少才考慮促銷，避免把快賣完的產品打折", new AcceptableValueRange<int>(0, 100000)));
 		_promoUseSalesRate = Config.Bind("Promo", "UseSalesRate", defaultValue: true, "進階促銷：用最近兩次評估的平均日銷量計算「庫存 ÷ (日銷+1)」抓滯銷品（庫存高＋賣得慢優先）；無銷量資料時自動退回純庫存模式。");
-		_smartRestock = Config.Bind("Restock", "SmartRestock", defaultValue: true, "聰明補貨：修正 NPC 補貨員的任務分配 — 優先補「存貨比例最低」的貨架、優先搬「箱子內最少」的盒子(清出空間)、並且不會兩個 NPC 搶同一箱。出錯時自動退回原版行為。");
+		_smartRestock = Config.Bind("Restock", "SmartRestock", defaultValue: true, "聰明補貨：優先處理缺貨比例高的貨架、清空剩量較少的箱子；同一貨架同時只派一名員工，轉架時也重新檢查占用，沒有空閒任務則等待。");
 		_warehouseGroupPlacement = Config.Bind("Warehouse", "GroupPlacement", defaultValue: true, "入倉集中擺放：NPC 放箱入倉時，優先放進「已經有同產品」的倉庫架（就近者優先），不再塞進最近的任意空位散落各架。");
 		_warehouseConsolidate = Config.Bind("Warehouse", "NightlyConsolidate", defaultValue: true, "夜間整理：打烊後自動把散落在其他架的同產品箱子搬回「該產品最多的那個架」（純資料搬移，走遊戲自己的同步路徑，實體外觀和標籤自動對帳）。");
 		_warehouseConsolidateHour = Config.Bind("Warehouse", "ConsolidateHour", 23f, new ConfigDescription("幾點執行夜間整理 (預設 23:00，打烊後)", new AcceptableValueRange<float>(0f, 24f)));
@@ -414,7 +414,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.3", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.4", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -425,7 +425,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.3 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.4 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -1024,7 +1024,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.3 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.4 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.4 — 2026-11-01
+
+- Reserve whole destination shelves for ordinary and manufactured-product restocking, rather than individual rows.
+- Return an empty task when all eligible work is occupied instead of falling through to vanilla assignment.
+- Check shelf ownership again when an employee redirects leftover goods to another shelf.
+- Retain ownership during placement pauses and release it after completion, cancellation, or failed pickup.
+- Keep warehouse source slots reserved only while the assigned employee is collecting that box.
+
 ## 1.2.3 — 2026-11-01
 
 - Add the production-ingredient minimum-stock control to the end of settings page 2, bound directly to `Restock.MinTotalStockProduction` in steps of 10.

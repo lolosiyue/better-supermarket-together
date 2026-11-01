@@ -12,7 +12,7 @@ A **BepInEx 5** quality-of-life mod for **Supermarket Together**, combining rest
 | Stock thresholds by category | Separate minimum-stock settings for general products, production ingredients, hygiene products, and cleaning supplies. Page 2 of the settings panel provides category controls. |
 | Purchasing conditions | Configurable cash reserve, boxes per order, daily/nightly order limits, and cooldowns. By default, only products seen during the current day are considered, with repeated stock checks to reduce false shortages during handling. |
 | Idle-employee gate | Can wait for an idle storage or restocking employee before placing orders. Uses a separate minimum reorder interval when enabled. |
-| Smarter restocking | Adjusts NPC shelf and box selection to prioritize shelves with lower stock ratios, use up smaller remaining boxes, and avoid boxes claimed by other employees. |
+| Smarter restocking | Assigns one restocking employee per whole shelf for both ordinary and manufactured products, covering pickup, travel, placement pauses, and retargeting leftover goods. Completion/cancellation releases the shelf; employees wait when no unclaimed task is available. Preserves low-stock shelf priority and selection of smaller remaining boxes. |
 | Grouped warehouse placement | Employees prefer shelves already holding the same product, reducing scattered storage. |
 | Nightly warehouse consolidation | Moves matching products toward their main storage shelf after closing. Defaults to 23:00 with a maximum of 30 box moves per night. |
 | Automatic production queues | By default, replenishes only recipes assigned to sales shelves, including sold-out shelves retaining their labels. Stock is counted separately for each custom variant. Historical recipes and leftover boxes alone do not create production targets. |
@@ -105,13 +105,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.3.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.4.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
-- Version 1.2.3 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.4 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 
