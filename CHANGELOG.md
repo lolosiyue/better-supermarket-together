@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.7 — 2026-11-01
+
+- Require the native MART OS 2.0 unlock (`softwareUpgradePerk`, perk 29) before automatic pricing can run, including when configuration enables it.
+- Lock the in-game pricing toggle and show the unlock requirement in settings and status reports; refresh availability after unlocking.
+- Reset pricing schedule state when leaving a store so another store is evaluated independently.
+
 ## 1.2.6 — 2026-11-01
 
 - Audit ordinary purchasing, ordinary box storage/restocking, production ingredient collection, and manufactured box storage/restocking as distinct flows.

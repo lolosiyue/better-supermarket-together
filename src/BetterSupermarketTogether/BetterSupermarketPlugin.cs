@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.6")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.7")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,13 +19,22 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.6";
+	public const string PluginVersion = "1.2.7";
 
 	internal static ManualLogSource Log;
 
 	internal static BetterSupermarketPlugin Instance;
 
     internal static bool ProductionTrayEnabled => EnablePlugin && Instance != null && Instance._productionAutoTray != null && Instance._productionAutoTray.Value;
+
+    internal static bool AutoPricingUnlocked => HasMartOs20(GameData.Instance);
+
+    private static bool HasMartOs20(GameData game)
+    {
+        // Native perk 29 (MART OS 2.0) sets this flag; the ordering device uses it too.
+        var upgrades = game != null ? game.GetComponent<UpgradesManager>() : null;
+        return upgrades != null && upgrades.softwareUpgradePerk;
+    }
 
 	internal static string PendingNotification;
 
@@ -353,7 +362,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		_daytimeReorderCooldownSeconds = Config.Bind("Daytime", "ReorderCooldownSeconds", 600f, new ConfigDescription("營業模式：同一產品兩次自動下單的最小間隔（現實秒）", new AcceptableValueRange<float>(30f, 3600f)));
 		_daytimeRequireLowShelves = Config.Bind("Daytime", "RequireLowShelves", defaultValue: false, "營業模式額外條件：貨架上該產品低於 DaytimeShelfThreshold 才下單（想省錢可開啟）");
 		_daytimeShelfThreshold = Config.Bind("Daytime", "ShelfThreshold", 100, new ConfigDescription("營業模式 RequireLowShelves 使用的貨架存量門檻", new AcceptableValueRange<int>(0, 100000)));
-		_pricingEnable = Config.Bind("Pricing", "Enable", defaultValue: true, "自動更新定價：每天定時把所有已解鎖產品的售價設為「成本價 × Percentage%」。遊戲每 7 天通脹一次(進貨成本上漲 5%~15%)，此功能會自動跟上调價。");
+		_pricingEnable = Config.Bind("Pricing", "Enable", defaultValue: true, "需先解鎖 MART OS 2.0 才會自動定價：每天定時把所有已解鎖產品的售價設為「成本價 × Percentage%」，跟隨進貨成本調整。");
 		_pricingUpdateHour = Config.Bind("Pricing", "UpdateHour", 8f, new ConfigDescription("每天幾點更新定價 (遊戲一天從 8:00 開始)", new AcceptableValueRange<float>(0f, 24f)));
 		_pricingPercentage = Config.Bind("Pricing", "Percentage", 200, new ConfigDescription("售價 = 成本價 × (Percentage/100)。客人最高只接受成本的約 201%~250%(隨機)，200% = 不會被嫌貴的最高價", new AcceptableValueRange<int>(50, 250)));
 		_pricingRoundDown = Config.Bind("Pricing", "RoundDown", defaultValue: false, "開啟後價格取到小數 1 位(如 $2.4)，關閉取到小數 2 位(如 $2.47)");
@@ -414,7 +423,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.6", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.7", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -425,7 +434,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.6 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.7 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -433,6 +442,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = false;
 			_renamedThisSession = false;
 			_extraSlotsApplied = false;
+			_pricingLastDay = -1;
+			_pricingLastProductCount = -1;
 			StaffCapacity.Reset();
 			ProductionAutomation.Reset();
 			SettingsPanelUI.ResetForSceneChange();
@@ -526,7 +537,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			}
 		}
 		_wasStoreOpen = isSupermarketOpen;
-		if (_pricingEnable.Value)
+		if (_pricingEnable.Value && HasMartOs20(instance3))
 		{
 			bool num = _pricingLastDay != instance3.gameDay && instance3.timeOfDay >= _pricingUpdateHour.Value;
 			bool flag2 = false;
@@ -960,7 +971,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.6 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.7 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -979,7 +990,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			text3 = "補貨：日間窗口";
 		}
-		string text4 = text3 + " ｜ 定價：" + (_pricingEnable.Value ? (_pricingPercentage.Value + "%") : "關") + " ｜ 促銷：" + (_promoEnable.Value ? (_promoDiscount.Value + "%") : "關") + " ｜ 倉庫整理：" + (_warehouseConsolidate.Value ? "開" : "關") + " ｜ 聰明補貨：" + (SmartRestockEnabled ? "開" : "關");
+		string text4 = text3 + " ｜ 定價：" + (_pricingEnable.Value ? (AutoPricingUnlocked ? (_pricingPercentage.Value + "%") : "鎖定（需 MART OS 2.0）") : "關") + " ｜ 促銷：" + (_promoEnable.Value ? (_promoDiscount.Value + "%") : "關") + " ｜ 倉庫整理：" + (_warehouseConsolidate.Value ? "開" : "關") + " ｜ 聰明補貨：" + (SmartRestockEnabled ? "開" : "關");
 		if (_onlyHost.Value && !instance.isServer)
 		{
 			text4 += " ｜ ⚠非主機（功能待機）";
@@ -1252,6 +1263,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private bool RunAutoPricing(GameData gd)
 	{
+        if (!HasMartOs20(gd)) return false;
 		ProductListing instance = ProductListing.Instance;
 		if (instance == null || instance.productsData == null || instance.availableProducts == null || instance.productPlayerPricing == null)
 		{

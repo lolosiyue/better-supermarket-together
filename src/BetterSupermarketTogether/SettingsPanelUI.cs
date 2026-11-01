@@ -73,6 +73,7 @@ internal static class SettingsPanelUI
 
 	public static void EnsureBoardButton()
 	{
+        if (PanelOpen) RefreshValues();
 		if (_buttonCreated)
 		{
 			return;
@@ -231,7 +232,9 @@ internal static class SettingsPanelUI
 	{
 		foreach (var (toggle, configEntry) in BoolBindings)
 		{
-			toggle.SetIsOnWithoutNotify(configEntry.Value);
+            bool available = !IsPricingSetting(configEntry) || BetterSupermarketPlugin.AutoPricingUnlocked;
+            toggle.interactable = available;
+			toggle.SetIsOnWithoutNotify(available && configEntry.Value);
 		}
 		foreach (var floatBinding in FloatBindings)
 		{
@@ -443,14 +446,22 @@ internal static class SettingsPanelUI
 		toggle.targetGraphic = gameObject2.GetComponent<Image>();
 		GameObject gameObject3 = NewRect(gameObject2.transform, "check", new Vector2(14f, 14f), Vector2.zero, new Color(0.3f, 0.75f, 0.35f));
 		toggle.graphic = gameObject3.GetComponent<Image>();
-		toggle.isOn = entry.Value;
+        bool pricing = IsPricingSetting(entry);
+        bool available = !pricing || BetterSupermarketPlugin.AutoPricingUnlocked;
+        toggle.interactable = available;
+		toggle.isOn = available && entry.Value;
 		toggle.onValueChanged.AddListener((bool v) =>
 		{
+            if (pricing && !BetterSupermarketPlugin.AutoPricingUnlocked) { RefreshValues(); return; }
 			entry.Value = v;
 		});
 		BoolBindings.Add((toggle, entry));
-		NewText(gameObject.transform, label, 14, new Vector2(-5f, 0f), new Vector2(400f, 30f), TextAnchor.MiddleLeft);
+        var text = NewText(gameObject.transform, label, 14, new Vector2(-5f, 0f), new Vector2(400f, 30f), TextAnchor.MiddleLeft);
+        if (pricing) LabelBindings.Add((text, () => BetterSupermarketPlugin.AutoPricingUnlocked ? label : label + "（需 MART OS 2.0）"));
 	}
+
+    private static bool IsPricingSetting(ConfigEntry<bool> entry) =>
+        entry.Definition.Section == "Pricing" && entry.Definition.Key == "Enable";
 
 	private static void AddFloatRow(Transform parent, string label, Func<float> get, Action<float> set, float step, Vector2 pos)
 	{
