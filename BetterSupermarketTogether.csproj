@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>BetterSupermarketTogether</AssemblyName>
+    <RootNamespace>BetterSupermarketTogether</RootNamespace>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+    <Product>Better Supermarket Together</Product>
+    <Description>Quality-of-life automation and employee customization for Supermarket Together.</Description>
+    <GameDir Condition="'$(GameDir)' == ''">$(SUPERMARKET_TOGETHER_DIR)</GameDir>
+    <ManagedDir>$(GameDir)/Supermarket Together_Data/Managed</ManagedDir>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(GameDir)/BepInEx/core/BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDir)/BepInEx/core/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mirror">
+      <HintPath>$(ManagedDir)/Mirror.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="PlayMaker">
+      <HintPath>$(ManagedDir)/PlayMaker.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(ManagedDir)/Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ManagedDir)/UnityEngine*.dll">
+      <Private>false</Private>
+    </Reference>
+    <None Update="assets/BetterSupermarketTogether_i18n_zhTW.tsv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>BetterSupermarketTogether_i18n_zhTW.tsv</TargetPath>
+    </None>
+  </ItemGroup>
+  <Target Name="CheckGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(ManagedDir)/Assembly-CSharp.dll')" Text="Set GameDir to your Supermarket Together install directory, or set SUPERMARKET_TOGETHER_DIR." />
+    <Error Condition="!Exists('$(GameDir)/BepInEx/core/BepInEx.dll')" Text="Install BepInEx 5 in the game directory before building." />
+  </Target>
+</Project>

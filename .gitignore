@@ -1,0 +1,17 @@
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+.idea/
+.vscode/
+.codebase-memory/
+*.cfg
+*.log
+*.es3
+*.bak
+*.disabled
+.env
+.env.*
+GamePath.local.props

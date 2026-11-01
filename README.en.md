@@ -1,0 +1,115 @@
+# Better Supermarket Together
+
+English · [繁體中文](README.md)
+
+A **BepInEx 5** quality-of-life mod for **Supermarket Together**, combining restocking, production, warehouse organization, pricing, promotions, cleaning, and employee management. Previously named **AutoRestock2230**.
+
+## Features
+
+| Feature | What it does |
+| --- | --- |
+| Daytime and nighttime purchasing | Checks stock during configurable in-game hours and orders products that fall below their thresholds. Default daytime hours are 08:00–22:00; nighttime hours are 22:30–23:54. Daytime ordering can optionally require the store to be open. |
+| Stock thresholds by category | Separate minimum-stock settings for general products, production ingredients, hygiene products, and cleaning supplies. Page 2 of the settings panel provides category controls. |
+| Purchasing conditions | Configurable cash reserve, boxes per order, daily/nightly order limits, and cooldowns. By default, only products seen during the current day are considered, with repeated stock checks to reduce false shortages during handling. |
+| Idle-employee gate | Can wait for an idle storage or restocking employee before placing orders. Uses a separate minimum reorder interval when enabled. |
+| Smarter restocking | Adjusts NPC shelf and box selection to prioritize shelves with lower stock ratios, use up smaller remaining boxes, and avoid boxes claimed by other employees. |
+| Grouped warehouse placement | Employees prefer shelves already holding the same product, reducing scattered storage. |
+| Nightly warehouse consolidation | Moves matching products toward their main storage shelf after closing. Defaults to 23:00 with a maximum of 30 box moves per night. |
+| Automatic production queues | Learns product recipes from production shelves, boxes, and existing queues; replenishes queues at a configurable production-area stock threshold. Keeps distinct custom variants and avoids duplicate work. |
+| Automatic ingredient feeding | Transfers required base and optional ingredients from ordinary warehouse storage onto production trays. Production itself uses the game's employees and workbenches. |
+| Automatic pricing | Updates unlocked products at a scheduled time using current purchase costs, and reevaluates after product unlocks. The default selling price is 200% of cost, with configurable percentage and rounding. |
+| Automatic promotions | Selects an eligible stocked product each day. Can estimate slow-moving stock from inventory and recent sales, falling back to inventory ranking when sales data is unavailable. Default discount: 15%. |
+| Automatic order-department activation | Activates the unlocked order department when the supermarket opens. |
+| Extra employee capacity | Buy additional hiring slots with in-game money. Default costs increase as $5,000, $10,000, $15,000, and so on. Slots are applied after employees finish loading. |
+| Employee naming | Enter a name, randomize one employee, or randomize everyone. Choose Chinese or English names, including Alex Carter and Emma Wilson. Names have a 25-character limit; choosing a name stops the load-time default list from replacing it. |
+| Cleaner robot patrol | Patrols while idle and looks for nearby unclaimed trash. Patrol radius is configurable. |
+| Traditional Chinese text corrections | Includes an override table for selected in-game translations, applied when the game language is Chinese. |
+| In-game controls and status | Manager-board plugin button, F10 settings, F8 status overlay, F9 report, and F11 diagnostic logging. |
+
+## Installation
+
+Requirements: the Windows version of Supermarket Together and **BepInEx 5 x64** installed in the game directory. The local build uses BepInEx 5.4.23.2 and game assemblies from Unity 2023.2.22f1. Other versions have not been fully validated.
+
+1. Close the game. If needed, install BepInEx 5 according to its instructions and launch the game once.
+2. Extract the mod package and merge its `BepInEx` directory into the game installation.
+3. Keep these two files together:
+
+   ```text
+   BepInEx/plugins/BetterSupermarketTogether/
+   ├── BetterSupermarketTogether.dll
+   └── BetterSupermarketTogether_i18n_zhTW.tsv
+   ```
+
+4. Restart the game, load your store, and open the plugin settings from the manager board.
+
+When upgrading from AutoRestock2230, remove or disable the old `AutoRestock2230.dll` first to avoid loading both copies. The new version retains the existing plugin identifier and configuration file, preserving settings, learned recipes, and purchased employee slots. Keep your original configuration file.
+
+## Controls
+
+| Control | Action |
+| --- | --- |
+| Manager board → 插件, or F10 | Open/close settings. Page 1 contains the main options; page 2 contains category stock thresholds. |
+| F10 → 員工改名 → 隨機風格 | Switch between `中文 / Chinese` and `英文 / English`, then use an individual random-name button or randomize everyone. Switching the style alone does not rename anyone. |
+| F8 | Toggle the top-left status overlay. |
+| F9 | Show the full status report. |
+| F11 | Write employee, capacity, recipe, and stock diagnostics to `BepInEx/LogOutput.log`. |
+
+Open the manager board before using the F10 panel so the cursor is available. Keyboard shortcuts are configurable.
+
+## Configuration
+
+For compatibility with the previous mod name, the configuration file remains:
+
+```text
+BepInEx/config/local.supermarkettogether.autorestock2230.cfg
+```
+
+Common options can be changed in-game. Close the game before editing the file manually.
+
+To use English random names and customize their pool:
+
+```ini
+[Naming]
+RandomNameStyle = English
+EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
+```
+
+Use `RandomNameStyle = Chinese` for the Chinese pool configured by `RandomNames`. A new installation defaults to Chinese names. Updating the mod does not automatically randomize existing employees.
+
+| Setting | Fresh-install default | Purpose |
+| --- | --- | --- |
+| `General.OnlyHost` | `true` | Run the main automation on the host in multiplayer, reducing duplicate purchases. |
+| `Daytime.OnlyWhenOpen` | `false` | Allow daytime restocking before opening the store. |
+| `Safety.CheckIntervalSeconds` | `10` | Stock-scan interval in real seconds. |
+| `Restock.GateOnIdleEmployee` | `true` | Wait for an idle storage/restocking employee. |
+| `Restock.MinTotalStockDefault` | `0` | Baseline minimum stock for ordinary products. |
+| `Restock.MinTotalStockProduction` | `100` | Restock threshold for production ingredients. |
+| `Restock.GroupMinStock` | `4:100,5:100` | Category thresholds; 4 is hygiene and 5 is cleaning supplies. |
+| `Production.AutoQueueThreshold` | `0` | Queue production when production-area stock is at or below this value. |
+| `Pricing.Percentage` | `200` | Selling price as a percentage of current cost. |
+| `Promo.Discount` | `15` | Promotion discount percentage. |
+| `Staff.ExtraSlotBaseCost` | `5000` | Base cost for additional hiring slots, increasing with each purchase. |
+| `Naming.RandomNameStyle` | `Chinese` | Random-name style: `Chinese` or `English`. |
+
+These are defaults for new installations; existing values are preserved during an upgrade. `ExtraSlotsPurchased`, `LearnedCombinables`, and `KnownVariants` are maintained by the mod. Extra slots and learned recipes are stored in the local configuration and are currently shared across stores using that configuration.
+
+## Build and package
+
+Requires a .NET SDK (the local build uses .NET 10), plus your installed game and BepInEx assemblies. Game and BepInEx DLLs are not included in this source repository.
+
+```powershell
+./build.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
+./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
+```
+
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.0.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+
+## Scope and current status
+
+- Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
+- In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
+- Version 1.2.0 has a compilation check. No new full-match or GUI acceptance run was performed; the English-name option's in-game appearance still needs gameplay confirmation.
+- This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
+- When reporting an issue, include the game version, mod version, and relevant log excerpts.
+
+This is an unofficial mod and is not affiliated with the game's developer. Code is available under the [MIT License](LICENSE). See [CHANGELOG.md](CHANGELOG.md) for version history.

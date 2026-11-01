@@ -1,0 +1,1821 @@
+NPCemployee0	我來顧這台收銀台。
+NPCmessage0	我沒找到這個：
+NPCmessage1	這也太貴了吧：
+NPCmessage2	沒找到我想買的東西
+NPCmessage3	沒有收銀台可用？掰啦！
+NPCmessage4	掰掰，笨蛋們！
+NPCmessage5	這家超市也太髒亂了吧！
+NPCmessagehit0	好痛！
+NPCmessagehit1	天啊
+NPCmessagehit2	把這個塞進你的屁眼啦！
+NPCmessagehit3	警察啊啊啊啊！
+NPCmessagehit4	咿呀啊！
+NPCmessagehit5	啊啊啊啊啊！
+NPCmessagehit6	這是虐待！
+NPCmessagehit7	嘎啊！
+NPCmessagehit8	再打用力一點嘛親愛的
+NPCmessagehit9	OwO
+NPCmessagehitemployee0	壞老闆
+NPCmessagehitemployee1	這是虐待啦
+NPCmessagehitemployee2	D:
+NPCmessagehitemployee3	號召罷工！
+accfactor	加速倍率
+addmoney	[左鍵] 加錢
+addons	附加內容
+alientkn	拿到外星人代幣了！
+alreadyclose	商店已經打烊了
+alreadyopen	商店已經開業了
+anmlevent0	這需要捕獸網！
+anmlevent1	捕獸網裡已經有動物了！先把它放進籠子裡！
+anmlevent2	捕獸網裡什麼都沒有……
+arcblderdisclaimer	按住 [丟棄物品] 可忽略碰撞。請謹慎使用。
+atopayinvce0	今天的帳單已繳清！
+atopayinvce1	錢不夠付今天的帳單！
+atpaynvocdsbl0	自動繳費：開
+atpaynvocdsbl1	自動繳費：關
+back	返回
+backups	備份
+backupswarning	警告：載入備份會覆蓋目前檔案的天數。
+bboardmoveddisclaimer	員工管理已搬移到經理看板上
+boughtproductscost	已進貨成本：
+buildable0	擺放模式
+buildable0a	刪除模式
+buildable1	商品貨架
+buildable10	倉儲架（無標籤）
+buildable11	蔬果架 A
+buildable12	自助結帳機
+buildable13	蔬果架 B
+buildable14	商品貨架（半）
+buildable15	階梯式貨架
+buildable16	壁掛貨架
+buildable17	洞洞板貨架
+buildable18	蔬果架 B（半）
+buildable19	轉角貨架（大）
+buildable2	基本冰箱
+buildable20	轉角貨架（小）
+buildable21	基本棧板展示架
+buildable22	木質棧板展示架 A
+buildable23	木質棧板展示架 B
+buildable24	塑膠棧板展示架
+buildable25	高棧板展示架
+buildable26	基本棧板展示架（半）
+buildable27	木質棧板展示架 A（半）
+buildable28	木質棧板展示架 B（半）
+buildable29	塑膠棧板展示架（半）
+buildable3	雙門冰箱
+buildable30	高棧板展示架（半）
+buildable31	塑膠貨架 A
+buildable32	塑膠貨架 B
+buildable33	塑膠貨架 C
+buildable34	塑膠貨架 D
+buildable35	塑膠貨架 E
+buildable36	塑膠貨架 F
+buildable37	大貨架
+buildable38	木質貨架 A
+buildable39	木質貨架 B
+buildable4	冷凍櫃
+buildable40	木質貨架 C
+buildable41	木質貨架 D
+buildable42	木質貨架 E
+buildable5	倉儲架
+buildable6	收銀台（右）
+buildable7	收銀台（左）
+buildable8	直立式冷凍櫃
+buildable9	商品櫃台 A
+builder	建築模式
+builder0	建造 / 移動 / 刪除
+builder1	向左旋轉
+builder2	向右旋轉
+builder3	選單向上
+builder4	選單向下
+buy	購買
+buyshopspace	購買商店空間
+buystoragespace	購買倉儲空間
+bystndrcnvrt	好啦好啦！我買就是了！
+bystndrcnvrt1	別逼我！我什麼都不買！
+camount	目前金額
+candytkn	拿到糖果代幣了！
+canthiremore	無法再僱用更多員工
+cashiers	收銀台
+changecolor	更改顏色
+changename	更改名稱
+character	角色
+checkout0	[左鍵] 加錢
+checkout1	[右鍵] 拿錢
+checkoutlane1	關閉收銀通道
+checkoutredbutton	只有店長能按這顆按鈕
+checkoutwarning	你的超市至少需要一個有人值守的收銀台
+complaintsfilth	髒亂投訴：
+connectionlost	與主機的連線已中斷
+continue	繼續
+coolpeople	只限酷哥酷姐進入
+coopplayerfunds	已為連線玩家加入額外資金
+copycode	複製邀請碼……
+cosmetics	申請造型外觀
+cosmetics1	造型外觀 DLC 已過審！
+cpylogs0	複製主要日誌
+cpylogs1	複製次要日誌
+csettingprices	[正在設定價格]
+cshelfaux2	把貨架移到入口（僅限主機）
+day	第 
+daybalance	當日結餘：
+dcord0	加入我們的
+dcord1	為慶祝開幕，本月將舉辦一次 200 個名額的 DLC 抽獎活動。錯過不再！
+decorat1	霓虹燈 A
+decorat10	中央定價機
+decorat100	花卉 E
+decorat101	花卉 F
+decorat102	花卉 G
+decorat103	花卉 H
+decorat104	花卉 I
+decorat105	花卉 J
+decorat106	花卉 K
+decorat107	花卉 L
+decorat108	花卉 M
+decorat109	花卉 N
+decorat11	墓碑 A
+decorat110	花卉 O
+decorat111	花卉 P
+decorat112	花卉 Q
+decorat113	花卉 R
+decorat114	花卉 S
+decorat115	花卉 T
+decorat116	花卉 U
+decorat117	花卉 V
+decorat118	花卉 W
+decorat119	花卉 X
+decorat12	墓碑 B
+decorat120	花卉 Y
+decorat121	花卉 Z
+decorat122	花卉 A1
+decorat123	花卉 B1
+decorat124	超市立柱
+decorat125	金屬立柱
+decorat126	水泥吊掛花器 A
+decorat127	水泥吊掛花器 B
+decorat128	陶瓷吊掛花器 A
+decorat129	NPC 卡住解除方塊
+decorat13	墓碑 C
+decorat130	路燈 A
+decorat131	路燈 B
+decorat132	路燈 C
+decorat133	路燈 D
+decorat134	路燈 E
+decorat135	路燈 F
+decorat136	路燈 G
+decorat137	路燈 H
+decorat138	路燈 I
+decorat139	路燈 J
+decorat14	墓碑 D
+decorat140	路燈 K
+decorat141	路燈 L
+decorat142	路燈 M
+decorat143	路燈 N
+decorat144	路燈 O
+decorat145	路燈 P
+decorat146	路燈 Q
+decorat147	噴泉 A1
+decorat148	噴泉 A2
+decorat149	噴泉 A3
+decorat15	墓碑 E
+decorat150	噴泉 B1
+decorat151	噴泉 B2
+decorat152	噴泉 B3
+decorat153	噴泉 C1
+decorat154	噴泉 C2
+decorat155	噴泉 C3
+decorat156	噴泉 D1
+decorat157	噴泉 D2
+decorat158	噴泉 D3
+decorat159	噴泉 E1
+decorat16	墓碑 F
+decorat160	噴泉 E2
+decorat161	噴泉 E3
+decorat162	噴泉 F1
+decorat163	噴泉 F2
+decorat164	噴泉 F3
+decorat165	噴泉 G1
+decorat166	噴泉 G2
+decorat167	噴泉 G3
+decorat168	小型可塗色隔板
+decorat169	中型可塗色隔板
+decorat17	南瓜 A
+decorat170	大型可塗色隔板
+decorat171	轉角隔板
+decorat172	大型地面花器 A
+decorat173	大型地面花器 B
+decorat174	大型地面花器 C
+decorat175	大型地面花器 D
+decorat176	十字可塗色隔板
+decorat177	T 字形可塗色隔板
+decorat178	相框
+decorat179	門形可塗色隔板
+decorat18	南瓜 B
+decorat180	壁掛花器 A
+decorat181	壁掛花器 A 面板
+decorat182	壁掛花器 B
+decorat183	壁掛花器 B 面板
+decorat184	紙板打包機
+decorat185	簡單橫樑
+decorat186	十字橫樑
+decorat187	T 字橫樑
+decorat188	轉角橫樑
+decorat189	包裹取貨點
+decorat19	南瓜 C
+decorat190	活動籠子
+decorat191	廣告框 A
+decorat192	廣告框 B
+decorat193	廣告框 C
+decorat194	廣告框 D
+decorat195	廣告框 E
+decorat196	廣告框 F
+decorat197	廣告框 G
+decorat198	收納架：掃碼槍
+decorat199	收納架：掃把
+decorat2	盆栽 A
+decorat20	南瓜人
+decorat200	收納架：大錘
+decorat201	收納架：下單平板
+decorat202	收納架：銷售平板
+decorat203	收納架：托盤
+decorat204	收納架：工具箱
+decorat205	東方燈籠 A
+decorat206	東方燈籠 B
+decorat207	東方燈籠 C
+decorat208	東方燈籠 D
+decorat209	東方燈籠 E
+decorat21	發光鬼魂
+decorat210	東方燈籠 F
+decorat211	東方燈籠 G
+decorat212	東方燈籠 H
+decorat213	東方燈籠 I
+decorat214	東方燈籠 J
+decorat215	廣播服務台
+decorat216	壁掛喇叭
+decorat217	長椅 A
+decorat218	長椅 B
+decorat219	長椅 C
+decorat22	發光花卉 A
+decorat220	長椅 D
+decorat221	長椅 E
+decorat222	長椅 F
+decorat223	長椅 G
+decorat224	長椅 H
+decorat225	長椅 I
+decorat226	長椅 J
+decorat227	長椅 K
+decorat228	長椅 L
+decorat229	長椅 M
+decorat23	發光花卉 B
+decorat230	長椅 N
+decorat231	長椅 O
+decorat232	長椅 P
+decorat233	長椅 Q
+decorat234	長椅 R
+decorat235	長椅 S
+decorat236	長椅 T
+decorat237	可疑的天線
+decorat238	滅火器
+decorat239	滅火器箱 A
+decorat24	迷你搬運車
+decorat240	滅火器箱 B
+decorat241	消防水管
+decorat242	火災警報器
+decorat243	火災警報按鈕
+decorat244	煙霧警報器
+decorat245	壁掛空調 A
+decorat246	壁掛空調 B
+decorat247	天花板空調
+decorat248	溫控服務台
+decorat249	回收自動販賣機
+decorat25	霓虹燈 B
+decorat250	統計服務台
+decorat251	奇妙南瓜
+decorat252	像素方塊：木頭
+decorat253	像素方塊：淺色木頭
+decorat254	像素方塊：深色木頭
+decorat255	像素方塊：泥土
+decorat256	像素方塊：草地泥土
+decorat257	像素方塊：沙子
+decorat258	像素方塊：雪
+decorat259	像素方塊：冰
+decorat26	霓虹燈 C
+decorat260	像素方塊：草
+decorat261	像素方塊：地面
+decorat262	像素方塊：乾裂地面
+decorat263	像素方塊：草地地面
+decorat264	像素方塊：石頭
+decorat265	像素方塊：石頭草地
+decorat266	生產機台
+decorat267	研究機台
+decorat268	像素箱子
+decorat269	像素木桶
+decorat27	霓虹燈 D
+decorat270	像素告示牌
+decorat271	像素寶箱
+decorat272	像素寶箱（開啟）
+decorat273	像素鐵軌
+decorat274	像素鐵軌彎道
+decorat275	像素軌道車
+decorat276	像素碼頭
+decorat277	像素樓梯
+decorat278	像素木柵欄
+decorat279	像素地面火把
+decorat28	霓虹燈 E
+decorat280	像素牆上火把
+decorat281	像素壁爐
+decorat282	像素熊
+decorat283	像素鳥
+decorat284	像素兔子
+decorat285	像素貓
+decorat286	像素小雞
+decorat287	像素乳牛
+decorat288	像素鹿
+decorat289	像素狗
+decorat29	吊燈 A
+decorat290	像素鴨子
+decorat291	像素狐狸
+decorat292	像素山羊
+decorat293	像素馬
+decorat294	像素獅子
+decorat295	像素蜥蜴
+decorat296	像素貓頭鷹
+decorat297	像素貓熊
+decorat298	像素豬
+decorat299	像素綿羊
+decorat3	電視
+decorat30	吊燈 B
+decorat300	像素烏龜
+decorat301	像素斑馬
+decorat302	可塗色方塊 A
+decorat303	可塗色方塊 B
+decorat304	像素花卉 A
+decorat305	像素花卉 B
+decorat306	像素花卉 C
+decorat307	像素花卉 D
+decorat308	像素花卉 E
+decorat309	像素仙人掌
+decorat31	吊燈 C
+decorat310	像素蘑菇 A
+decorat311	像素蘑菇 B
+decorat312	像素棕櫚樹
+decorat313	像素胖胖植物
+decorat314	像素南瓜
+decorat315	像素樹墩
+decorat316	像素向日葵
+decorat317	像素樹 A
+decorat318	像素樹 B
+decorat319	像素西瓜
+decorat32	吊燈 D
+decorat320	異常高的郵筒
+decorat321	生產工作台
+decorat322	LED 花瓶 A
+decorat323	LED 花瓶 B
+decorat324	LED 花瓶 C
+decorat325	LED 花瓶 D
+decorat326	LED 花瓶 E
+decorat327	LED 花瓶 F
+decorat328	LED 花瓶 G
+decorat329	LED 花瓶 H
+decorat33	吊燈 E
+decorat330	LED 花瓶 I
+decorat331	雕像：葉子
+decorat332	雕像：抽象貓
+decorat333	雕像：抽象大象
+decorat334	雕像：抽象馬
+decorat335	雕像：抽象山羊
+decorat336	雕像：情侶
+decorat337	雕像：丹頂鶴
+decorat338	雕像：海豚
+decorat339	雕像：手 A
+decorat34	吊燈 F
+decorat340	雕像：手 B
+decorat341	雕像：無尾熊
+decorat342	雕像：猴子
+decorat343	雕像：球體
+decorat344	雕像：螺旋
+decorat345	雕像：立方體
+decorat346	雕像：對稱
+decorat347	雕像：火山岩
+decorat348	謎樣方塊
+decorat349	物流服務台
+decorat35	吊燈 G
+decorat350	可塗色高花器
+decorat351	可塗色花園花器 A
+decorat352	可塗色花園花器 B
+decorat353	可塗色花園花器 C
+decorat354	可塗色花園花器 D
+decorat355	可塗色花園花器 E
+decorat356	可塗色花園花器 F
+decorat357	可塗色花園花器 G
+decorat358	可塗色花園花器 H
+decorat359	可塗色花園花器 I
+decorat36	吊燈 H
+decorat360	樹籬：方形
+decorat361	樹籬：小方形
+decorat362	樹籬：方正修剪
+decorat363	樹籬：金字塔
+decorat364	樹籬：圓形
+decorat365	樹籬：方拱門
+decorat366	樹籬：大圓拱門
+decorat367	樹籬：細圓拱門
+decorat368	白蠟樹 A
+decorat369	白蠟樹 B
+decorat37	吊燈 I
+decorat370	白楊樹 A
+decorat371	白楊樹 B
+decorat372	冷杉 A
+decorat373	冷杉 B
+decorat374	冷杉 C
+decorat375	冷杉 D
+decorat376	冷杉 E
+decorat377	冷杉 F
+decorat378	老樹 A
+decorat379	老樹 B
+decorat38	吊燈 J
+decorat380	松樹 A
+decorat381	松樹 B
+decorat382	松樹 C
+decorat383	松樹 D
+decorat384	懸鈴木 A
+decorat385	懸鈴木 B
+decorat386	懸鈴木 C
+decorat387	白楊木 A
+decorat388	白楊木 B
+decorat389	白楊木 C
+decorat39	吊燈 K
+decorat390	柳樹 A
+decorat391	柳樹 B
+decorat392	柳樹 C
+decorat393	冬日冷杉 A
+decorat394	冬日冷杉 B
+decorat395	冬日冷杉 C
+decorat396	冬日冷杉 D
+decorat397	冬日松樹 A
+decorat398	冬日松樹 B
+decorat399	冬日松樹 C
+decorat4	天花板告示牌
+decorat40	吊燈 L
+decorat400	冬日松樹 D
+decorat41	吊燈 M
+decorat42	特殊燈具 A
+decorat43	監視器
+decorat44	保全服務台
+decorat45	清潔機器人
+decorat46	基本桌子 A
+decorat47	基本椅子 A
+decorat48	員工家具 A
+decorat49	私人冰箱
+decorat5	人潮圍欄
+decorat50	咖啡機
+decorat51	零食機
+decorat52	汽水機
+decorat53	飛鏢機
+decorat54	足球桌
+decorat55	撞球桌
+decorat56	撞球桿盒
+decorat57	街機：夾娃娃機
+decorat58	街機：太空大戰
+decorat59	街機：金銀島
+decorat6	防盜門
+decorat60	聖誕樹
+decorat61	聖誕拱門
+decorat62	聖誕花圈
+decorat63	鼓手胡桃鉗
+decorat64	將軍胡桃鉗
+decorat65	騎士胡桃鉗
+decorat66	劍士胡桃鉗
+decorat67	發光麋鹿
+decorat68	小火車
+decorat69	Najara 模擬器
+decorat7	木盆
+decorat70	高腳凳
+decorat71	雪人
+decorat72	糖果手杖
+decorat73	聖誕禮物
+decorat74	陶瓷盆 A
+decorat75	陶瓷盆 B
+decorat76	陶瓷盆 C
+decorat77	陶瓷盆 D
+decorat78	陶瓷盆 E
+decorat79	陶瓷盆 F
+decorat8	寬口木盆
+decorat80	陶瓷盆 G
+decorat81	植物 A
+decorat82	植物 B
+decorat83	植物 C
+decorat84	植物 D
+decorat85	植物 E
+decorat86	植物 F
+decorat87	植物 G
+decorat88	植物 H
+decorat89	植物 I
+decorat9	天花板通風口
+decorat90	植物陶盆 A
+decorat91	植物陶盆 B
+decorat92	植物陶盆 C
+decorat93	植物 J
+decorat94	植物 K
+decorat95	植物 L
+decorat96	花卉 A
+decorat97	花卉 B
+decorat98	花卉 C
+decorat99	花卉 D
+deleteoff	刪除模式：關
+deleteon	刪除模式：開
+departneed0	購買部門
+departneed0a	功能開發中
+departneed1	# 商店需求
+departneed2	# 倉儲需求
+deprtmnt0	訂單包裝部
+deprtmnt1	生產部
+deprtmnt2	生產部額外商店
+deprtmnt3	生產部額外倉儲
+disableinvoicesoption	停用帳單
+disclaimer1	如果你遇到連線問題，記得先更新到最新版本！
+dismissedemployee	已解僱一名員工！
+dlcdiscounted	關
+drawgame0	畫圖猜詞！小遊戲
+drawgame1	畫圖猜詞小遊戲開始了！
+drawgame2	畫圖猜詞優勝者：
+drawgame3	畫圖猜詞：時間到！
+drawgame4	你的題目是……
+drawgame5	輸入你的答案……
+drawgame6	送出
+drawgame7	啟用小遊戲
+eggtkn	拿到復活節彩蛋代幣了！
+electricitycost	電費：
+emploNoTask	無任務
+emploalreadyhired	已僱用
+emploassignedtask	已指派任務
+emploassignment	職務指派
+emplocashexp	收銀員經驗
+emplochangeall	更改全部優先順序
+emplodismiss	解僱
+emploentername	輸入員工名稱……
+emplohire	僱用
+emplohired	已僱用員工
+emploloadlay	載入優先設定
+emplomanufexp	生產經驗
+emplomaxemplo	員工上限
+emplomsgnopckp	沒有放置有效的訂單取貨點！
+emplonewpriority	倉儲
+emploordexp	包裝經驗
+emplorenew	員工合約每天更新！
+emploreroll	重新抽籤
+emplorestexp	補貨經驗
+emplosavelay	儲存優先設定
+emplosecexp	保全經驗
+emploselect	選擇
+emplostaffhappi	休息室滿意度
+emplostats	員工數據
+emplostoexp	倉儲經驗
+emplotechexp	技術員經驗
+employeeboardnew1	中斷紙箱回收
+employees	員工：
+employeesassignment	員工職務指派
+employeeswages	員工薪資：
+emptyposi	空位
+endofworkingday	工作日結束：
+entertext	輸入文字……
+franchiseexperience	加盟經驗：
+franchiselevel	加盟等級：
+franchisepointsavailable	可用加盟點數
+frxtnghr0	這裡沒有滅火器
+frxtnghr1	這個物品不能放在這裡
+frxtnghr2	這裡已經有物品了
+gtunlckable	解鎖了新物品！
+hat	帽子
+hedgemat	樹籬
+hiredemployee	僱用了一名員工！
+income	收入 
+invalidcode	邀請碼無效，或主機已關閉遊戲
+invo	帳單
+invodebt	帳單 / 負債
+invoicetype0	銀行貸款
+invoicetype1	電費
+invoicetype2	薪資
+invoicetype3	租金
+invopaidannoun	帳單已繳納！
+invopaidannoun2	請先還清目前的貸款！
+invopaidannoun3	貸款已核准！
+invopaidannoun4	貸款已還清！
+invovalue0	開立日期
+invovalue1	到期日
+invovalue2	繳納此帳單
+invovalue3	申請金額
+invovalue4	貸款期限
+invovalue5	應償還金額
+invovalue6	每日還款
+invovalue7	確認貸款
+invovalue8	貸款申請
+invovalue9	還清貸款
+invwarning0	有一筆銀行貸款還沒繳！
+invwarning1	關燈了！電費帳單還沒繳！
+invwarning2	員工集體罷工啦！他們會摸魚或直接不來上班！
+invwarning3	租金帳單還沒繳！
+join	加入
+joinfriends	用邀請碼加入朋友
+kick	踢出
+lghtlimit00	燈光限制選項已開啟。可在「載入商店」選單中移除。
+lghtlmttn0	限制燈光
+lghtlmttn1	過去有些玩家因商店裡燈具過多而發生黑畫面問題。如果你想嘗試解除此限制，可將此選項設為「否」。
+lghtnblptn	解除燈光數量上限
+lgtcsdsk0	可轉帳上限
+lgtcsdsk1	選擇金額
+lgtcsdsk2	轉帳
+lgtcsdsk3	此服務台僅限主機使用
+lgtcsdsk4	資金轉帳成功
+lgtcsdsk5	已經轉帳過了
+lgtcsdsk6	按住 [衝刺] 可加速轉帳
+lgtcsdsk7	此佈局目前無法額外轉帳
+lic12	待許可證核淮後，即可在此終端機將 YouTube 和 Twitch 連結到你的電視。
+loading	載入中
+loandisclmer	在還清目前的貸款之前無法申請新貸款
+lobby0	訂單部狀態：
+lobby1	營業中
+lobby2	已關閉
+lobby3	開啟訂單部
+lobby4	關閉訂單部
+loglog1	複製遊戲日誌到剪貼簿
+loglog2	已複製！
+lpbhv0	顯示近期玩家紀錄
+lpbhv1	最近一起玩過的成員：
+lpbhv2	已複製！
+lytdlcmr01	新的商店佈局開發中！
+managerboardnew1	購買空箱子
+managsavebckup	管理存檔備份
+mblackboard	經理看板
+message0	這個產品不能放進這種容器
+message1	這個貨架放不下更多商品了
+message10	找零不能少於應找金額
+message11	箱子裡還有商品
+message12	箱子已經滿了
+message13	不能在同一個箱子混裝不同商品
+message14	這需要一把掃把
+message15	僅限商店打烊時操作
+message16	僅限沒有顧客時操作
+message17	刪除前請先清空容器內的商品
+message17a	容器內還有商品。若你確定要刪除，請按住 [丟棄物品] 鍵再刪除
+message18	商店至少需要一個有人值守的收銀台
+message19	托盤放不下這個物品
+message2	不能在同一個貨架混放不同商品
+message20	棧板展示架需要比這更大的商品
+message3	沒有可用的加盟點數
+message4	請先解鎖前面的加盟節點
+message5	購物清單裡沒有商品
+message6	資金不足
+message7	手上已經拿著東西了
+message8	箱子裡已經沒有商品了
+message9	已經買下全部的超市空間了
+message9a	已經買下全部的倉儲空間了
+messagei0	超市開業了
+messagei1	加盟升級：獲得點數
+messagei2	獲得特權
+messagei3	獲得超市擴建
+messagei4	獲得倉儲擴建
+messagei5	獲得部門
+messagei5a	未達商店需求
+messagei5b	未達倉儲需求
+mfacturbuildable1	生產部商品架
+mfacturbuildable2	生產部倉儲架
+mfacturbuildable3	生產部倉儲架（無標籤）
+mfacturbuildable4	生產部冰箱 A
+mfactureproduct0	基本麵包
+mfactureproduct1	全麥麵包
+mfactureproduct10	瑪芬
+mfactureproduct11	客製蛋糕
+mfactureproduct12	紅絲絨蛋糕
+mfactureproduct13	起司蛋糕
+mfactureproduct14	胡蘿蔔蛋糕
+mfactureproduct15	草莓蛋糕
+mfactureproduct16	派
+mfactureproduct17	蔬菜沙拉
+mfactureproduct18	水果沙拉
+mfactureproduct19	三明治
+mfactureproduct2	雜糧麵包
+mfactureproduct20	雞肉飯
+mfactureproduct21	義大利肉醬麵
+mfactureproduct22	漢堡
+mfactureproduct23	湯品
+mfactureproduct24	提拉米蘇
+mfactureproduct25	蘋果塔
+mfactureproduct26	南瓜派
+mfactureproduct27	餅乾
+mfactureproduct28	德式蝴蝶餅
+mfactureproduct29	綜合果汁
+mfactureproduct3	無麩質麵包
+mfactureproduct30	萬聖節：南瓜餅乾
+mfactureproduct31	萬聖節：科學怪人餅乾
+mfactureproduct32	萬聖節：木乃伊餅乾
+mfactureproduct33	萬聖節：神秘餅乾
+mfactureproduct34	萬聖節：骷髏餅乾
+mfactureproduct35	酒品：手工蘭姆酒
+mfactureproduct36	酒品：手工龍舌蘭
+mfactureproduct37	酒品：手工琴酒
+mfactureproduct38	酒品：手工白蘭地
+mfactureproduct39	調酒：炸彈
+mfactureproduct4	白麵包
+mfactureproduct40	調酒：椰林飄香
+mfactureproduct41	調酒：瑪格麗特
+mfactureproduct42	調酒：黛克瑞
+mfactureproduct43	調酒：濃縮咖啡馬丁尼
+mfactureproduct44	調酒：莫希托
+mfactureproduct5	法國麵包
+mfactureproduct6	水果麵包
+mfactureproduct7	甜甜圈
+mfactureproduct8	餐包
+mfactureproduct9	可頌
+mfctng0	研究中
+mfctng1	找不到這個產品的配方
+mfctng2	生產機台有新配方了！
+mfctng3	把箱子或托盤裡的任意產品放進來，嘗試找出食譜。同一種產品可能有多種配方。
+mfctng4	每種顏色至少加入一種原料
+mfctng5	不能混合原料不同的產品！
+mfctngmchn0	基礎配方
+mfctngmchn1	選擇一個
+mfctngmchn2	可組合原料
+mfctngmchn3	可選擇任意數量，也可以不選
+mfctngmchn4	已選配方
+mfctngmchn5	每箱數量
+mfctngmchn6	開始生產
+mfctrdsk0	可用配方
+mfctrdsk1	可用生產員
+mfctrdsk2	店內商品
+mfctrdsk3	排隊中
+mfctrdsk4	統計中
+mfctrmply0	我缺這個或類似的商品：
+mgiven	已交付金額
+moneylostbecauserobbing	被搶走的錢：
+moontkn	拿到中秋月餅代幣了！
+mplyrl0	技術員
+mplyrl1	包裝員
+mprice	市場價格
+mreturn	應找金額
+mrktlyt0	佈局
+mrktlyt1	經典
+mrktlyt1desc	第一代的 Supermarket Together 佈局！
+mrktlyt2	最佳化
+mrktlyt2desc	經典佈局，但移除了室外建築並放大可塗色表面，效能略有提升
+mrktlyt3	花園
+mrktlyt3desc	超市兩翼之間的花園，可以用樹木和植物自由佈置
+mrktlyt4	廣場
+mrktlyt4desc	標準超市佈局，附帶一大片可佈置的室外廣場
+mrktlyt5	迷你
+mrktlyt5desc	「大平米」的反面。你能把所有商品都塞進去嗎？
+mrktlyt6	大平米
+mrktlyt6desc	雙倍客人、雙倍空間、一半的 FPS。
+mrktlytdsclmr	店內可擺放的裝飾品數量沒有上限。提醒你，商店的整體效能終究取決於你的電腦，以及你放了多少東西。
+nddstllngddn	（需要蒸餾附加器）
+network0	與主機的連線中斷
+newemplo	員工
+newoptionendday	自動結束一天
+newoptions1	視野角度
+newoptions10	準心大小
+newoptions11	準心顏色
+newoptions12	夜間調光
+newoptions2	電視音量
+newoptions3	允許影片播放
+newoptions4	高延遲模式
+newoptions5	一般
+newoptions6	永遠奔跑
+newoptions7	瀏覽器
+newoptions7a	無
+newoptions7b	普通
+newoptions7c	支援 Linux
+newoptions8	收銀音效音量
+newoptions9	鎖定游標
+newstore0	你的超市名稱
+newstore1	私人遊戲
+newstore2	僅限好友
+newstore3	公開遊戲
+newstore4	建立
+newstore5	商店名稱必須超過 2 個字元，且不能有無效字元
+newstore6	你也可以視需要調整難度
+newstore7	難度：
+no	否
+noalientkn	沒有可用的外星人代幣
+nobackups	沒有備份
+nocandytkn	沒有可用的糖果代幣
+noeggtkn	沒有可用的彩蛋代幣
+nomoontkn	沒有可用的中秋代幣
+nosnowtkn	沒有可用的雪花代幣
+nosrcandytkn	沒有可用的酸糖代幣
+nostartkn	沒有可用的星星代幣
+notfoundproducts	缺貨商品：
+npctmprtrcmplnt0	唉，溫度好不舒服！
+nplayer	新玩家加入：
+nwdlcbrd0	已在 Steam 上架
+nwdlcbrd1	為你和員工新增 150 頂帽子
+nwdlcbrd2	新增 200 種塗裝材料
+nwdlcbrd3	多種造型、姿勢和搞笑舞蹈
+nwdlcbrd4	可連結到電視的遊戲內瀏覽器
+off2disclaimer	有建議或問題？Steam 討論區是目前與開發者聯繫的唯一官方管道
+off3disclaimer	員工沒出現或摸魚？記得準時發薪水，不然是有後果的
+off4disclaimer	員工走路卡卡的？使用「NPC 卡住解除方塊」，並到討論區回報你的商店資料
+off5disclaimer	使用「儲存並離開」後，記得要在「載入商店」選單的正確分頁繼續遊戲
+off6disclaimer	更新會持續推出，但時程比較隨性！詳情見 Discord 公告頻道。
+opckgng0	可用訂單
+opckgng1	為這張桌子選擇訂單
+opckgng10	訂單送達時通知
+opckgng11	收到新訂單了！
+opckgng12	操作說明
+opckgng14	自動開啟
+opckgng2	訂單包裝部已開張！
+opckgng3	包裹已指派到桌子
+opckgng4	封裝目前的箱子
+opckgng6	訂單已完成包裝
+opckgng7	待包裝商品
+opckgng8	此訂單所需商品
+opckgng9	桌子
+options0	畫質品質
+options1	解析度
+options10	靈敏度縮放
+options11	反轉 X 軸
+options12	反轉 Y 軸
+options12a	調整按鍵設定
+options13	音訊
+options14	整體音量
+options15	音樂音量
+options16	音效音量
+options17	介面音量
+options17a	語音音量
+options18	主選單
+options19	離開遊戲
+options2	全螢幕
+options20	返回主選單？
+options21	確定要離開遊戲嗎？
+options22	複製邀請碼到剪貼簿
+options23	用邀請碼加入朋友
+options24	複製邀請碼……
+options25	視野動態效果
+options26	NPC 推擠
+options27	丟棄距離
+options3	垂直同步
+options4	抗鋸齒
+options5	亮度
+options6	畫質品質
+options6a	效能優先
+options6b	平衡
+options6c	高畫質
+options7	操作設定
+options8	X 軸靈敏度
+options9	Y 軸靈敏度
+orddevice0	店內已擺放數量
+orddevice1	補滿全店所需數量
+orddevice2	倉庫與箱子中的數量
+orddevice3	購買 MART OS 2.0 以解鎖進階功能
+othercosts	其他支出：
+paintablestablet0	先選材料，再選顏色，然後套用
+paintablestablet1	返回材料選擇
+paintablestablet2	切換上/下一個材料或顏色
+paintmat0	商店磁磚 A
+paintmat1	商店磁磚 B
+paintmat10	彩繪木頭
+paintmat100	雪
+paintmat101	冰 A
+paintmat102	冰 B
+paintmat103	冰 C
+paintmat104	冰 D
+paintmat105	產品：基本 A
+paintmat106	產品：基本 B
+paintmat107	產品：乳品 A
+paintmat108	產品：乳品 B
+paintmat109	產品：汽水 A
+paintmat11	基本磁磚 A
+paintmat110	產品：汽水 B
+paintmat111	產品：冷凍
+paintmat112	產品：衛生用品 A
+paintmat113	產品：衛生用品 B
+paintmat114	產品：清潔用品
+paintmat115	產品：甜食 A
+paintmat116	產品：甜食 B
+paintmat117	產品：肉類
+paintmat118	產品：罐頭食品
+paintmat119	產品：茶類
+paintmat12	基本磁磚 B
+paintmat120	產品：魚類 A
+paintmat121	產品：魚類 B
+paintmat122	產品：書籍 A
+paintmat123	產品：書籍 B
+paintmat124	產品：酒類 A
+paintmat125	產品：酒類 B
+paintmat126	產品：藥妝 A
+paintmat127	產品：藥妝 B
+paintmat128	產品：蔬果 A
+paintmat129	產品：蔬果 B
+paintmat13	基本磁磚 C
+paintmat130	產品：蔬果 C
+paintmat131	產品：蔬果 D
+paintmat132	產品：嬰幼用品 A
+paintmat133	產品：嬰幼用品 B
+paintmat134	實驗性電視
+paintmat135	產品：園藝 A
+paintmat136	產品：園藝 B
+paintmat137	產品：電子產品 A
+paintmat138	產品：電子產品 B
+paintmat139	竹子
+paintmat14	基本磁磚 D
+paintmat140	地毯 A
+paintmat141	地毯 B
+paintmat142	地毯 C
+paintmat143	地毯 D
+paintmat144	地毯 E
+paintmat145	地毯 F
+paintmat146	地毯 G
+paintmat147	地毯 H
+paintmat148	地毯 I
+paintmat149	水泥 A
+paintmat15	花崗岩磁磚 A
+paintmat150	水泥 B
+paintmat151	水泥 C
+paintmat152	水泥 D
+paintmat153	水泥 E
+paintmat154	水泥 F
+paintmat155	水泥 G
+paintmat156	花紋鋼板 A
+paintmat157	花紋鋼板 B
+paintmat158	金屬板 A
+paintmat159	金屬板 B
+paintmat16	花崗岩磁磚 B
+paintmat160	金屬板 C
+paintmat161	岩石 A
+paintmat162	岩石 B
+paintmat163	岩石 C
+paintmat164	岩石 D
+paintmat165	木紋 A
+paintmat166	木紋 B
+paintmat167	木紋 C
+paintmat168	木紋 D
+paintmat169	木紋 E
+paintmat17	花崗岩磁磚 C
+paintmat170	木紋 F
+paintmat171	木紋 G
+paintmat172	異國風磁磚 A
+paintmat173	異國風磁磚 B
+paintmat174	異國風磁磚 C
+paintmat175	異國風磁磚 D
+paintmat176	異國風磁磚 E
+paintmat177	異國風磁磚 F
+paintmat178	異國風磁磚 G
+paintmat179	異國風磁磚 H
+paintmat18	花崗岩磁磚 D
+paintmat180	異國風磁磚 I
+paintmat181	異國風磁磚 J
+paintmat182	異國風磁磚 K
+paintmat183	異國風磁磚 L
+paintmat184	異國風磁磚 M
+paintmat185	異國風磁磚 N
+paintmat186	異國風磁磚 O
+paintmat187	異國風磁磚 P
+paintmat188	異國風磁磚 Q
+paintmat189	異國風磁磚 R
+paintmat19	大理石磁磚 A
+paintmat190	異國風磁磚 S
+paintmat191	異國風磁磚 T
+paintmat192	異國風磁磚 U
+paintmat193	異國風磁磚 V
+paintmat194	異國風磁磚 W
+paintmat195	異國風磁磚 X
+paintmat196	異國風磁磚 Y
+paintmat197	異國風磁磚 Z1
+paintmat198	異國風磁磚 Z2
+paintmat199	異國風磁磚 Z3
+paintmat2	商店磚牆
+paintmat20	大理石磁磚 B
+paintmat200	異國風磁磚 Z4
+paintmat201	異國風磁磚 Z5
+paintmat202	復古泥土
+paintmat203	復古草地
+paintmat204	復古地面
+paintmat205	復古冰面
+paintmat206	復古岩石 A
+paintmat207	復古岩石 B
+paintmat208	復古沙地
+paintmat209	復古雪地
+paintmat21	大理石磁磚 C
+paintmat210	復古木紋 A
+paintmat211	復古木紋 B
+paintmat212	復古木紋 C
+paintmat213	現代磁磚 A
+paintmat214	現代磁磚 A
+paintmat215	現代磁磚 B
+paintmat216	現代磁磚 C
+paintmat217	現代磁磚 D
+paintmat218	現代磁磚 E
+paintmat219	現代磁磚 F
+paintmat22	原石大理石
+paintmat220	現代磁磚 G
+paintmat221	現代磁磚 H
+paintmat222	現代磁磚 I
+paintmat223	現代磁磚 J
+paintmat224	現代磁磚 K
+paintmat225	現代磁磚 L
+paintmat23	烤漆金屬
+paintmat24	基本磚塊
+paintmat25	磚牆紋 A
+paintmat26	磚牆紋 B
+paintmat27	磚牆紋 C
+paintmat28	基本鋁材
+paintmat29	拉絲鋁 A
+paintmat3	商店水泥牆
+paintmat30	拉絲鋁 B
+paintmat31	鑄造鋁
+paintmat32	霧面鋁
+paintmat33	壓花鋁
+paintmat34	氧化鋁
+paintmat35	拉絲銅
+paintmat36	金色板
+paintmat37	銅紋 A
+paintmat38	銅紋 B
+paintmat39	銅紋 C
+paintmat4	商店水泥
+paintmat40	鋁紋 A
+paintmat41	鋁紋 B
+paintmat42	鋁紋 C
+paintmat43	鋁紋 D
+paintmat44	鋁紋 E
+paintmat45	鋁紋 F
+paintmat46	鋁紋 G
+paintmat47	鋁紋 H
+paintmat48	鋁紋 I
+paintmat49	鋁紋 J
+paintmat5	亮面漆木
+paintmat50	黃銅紋 A
+paintmat51	黃銅紋 B
+paintmat52	黃銅紋 C
+paintmat53	黃銅紋 D
+paintmat54	黃銅紋 E
+paintmat55	黃銅紋 F
+paintmat56	黃銅紋 G
+paintmat57	銅色板
+paintmat58	綜合花紋 A
+paintmat59	綜合花紋 B
+paintmat6	木板條
+paintmat60	綜合花紋 C
+paintmat61	綜合花紋 D
+paintmat62	綜合花紋 E
+paintmat63	綜合花紋 F
+paintmat64	綜合花紋 G
+paintmat65	綜合花紋 H
+paintmat66	綜合花紋 I
+paintmat67	綜合花紋 J
+paintmat68	綜合花紋 K
+paintmat69	綜合花紋 L
+paintmat7	刨光木頭
+paintmat70	有機：草地
+paintmat71	有機：樹葉
+paintmat72	有機：石頭 A
+paintmat73	有機：石頭 B
+paintmat74	萬聖節：花紋 A
+paintmat75	萬聖節：花紋 B
+paintmat76	萬聖節：花紋 C
+paintmat77	萬聖節：花紋 D
+paintmat78	萬聖節：花紋 E
+paintmat79	萬聖節：花紋 F
+paintmat8	未刨木頭（有節瘤）
+paintmat80	萬聖節：花紋 G
+paintmat81	萬聖節：花紋 H
+paintmat82	萬聖節：花紋 I
+paintmat83	萬聖節：花紋 J
+paintmat84	萬聖節：花紋 K
+paintmat85	萬聖節：花紋 L
+paintmat86	萬聖節：花紋 M
+paintmat87	萬聖節：南瓜
+paintmat88	萬聖節：骷髏
+paintmat89	萬聖節：蜘蛛網
+paintmat9	未刨木頭
+paintmat90	聖誕節 A
+paintmat91	聖誕節 B
+paintmat92	聖誕節 C
+paintmat93	聖誕節 D
+paintmat94	聖誕節 E
+paintmat95	聖誕節 F
+paintmat96	聖誕節 G
+paintmat97	聖誕節 H
+paintmat98	聖誕節 I
+paintmat99	聖誕節 J
+panykey	按任意鍵繼續
+payloandisclmer	請繳納你的租金帳單。
+paynpcmessage	記得繳貸款！
+pcat	你摸了貓。晚點再來
+permi	權限
+permiss0	全域
+permiss1	店長
+permiss2	收銀員
+permiss3	補貨員
+permiss4	保全
+permiss5	聊天
+picfram0	預設圖片
+picfram1	圖片大小
+picfram2	請輸入有效的圖片網址……
+picfram3	嘗試設定網址
+pinboxes	箱子中的商品
+pinshelves	貨架上的商品
+pinstorage	倉庫中的商品
+poseskey	舞蹈鍵位設定
+product0	筆管麵
+product1	瓶裝水
+product10	番茄醬
+product100	清潔布
+product101	頂級咖啡膠囊
+product102	頂級漂白水
+product103	氨水
+product104	餅乾罐
+product105	大甜筒
+product106	巧克力抹醬
+product107	可可粉
+product108	洋芋片
+product109	棒棒糖
+product11	吐司
+product110	水蜜桃果醬
+product111	家庭號冰淇淋
+product112	巧克力禮盒
+product113	巧克力餅乾
+product114	香草餅乾
+product115	瑪德蓮
+product116	草莓果醬
+product117	花生醬
+product118	起司泡芙
+product119	棉花糖
+product12	胡椒
+product120	檸檬餅乾
+product121	榛果餅乾
+product122	頂級冰淇淋
+product123	蜂蜜
+product124	頂級巧克力禮盒
+product125	小泡芙
+product126	頂級蛋糕
+product127	碎牛肉
+product128	純牛肉
+product129	小牛肉
+product13	柳橙汁
+product130	雞翅
+product131	全雞
+product132	帕瑪火腿
+product133	切片火腿
+product134	大罐豌豆
+product135	大罐鮪魚
+product136	紅豆罐頭
+product137	貓飼料
+product138	貓飼料
+product139	狗飼料
+product14	燒烤醬
+product140	綠茶
+product141	檸檬茶
+product142	紅茶
+product143	胡椒薄荷茶
+product144	薄荷茶
+product145	纈草茶
+product146	大盒壽司
+product147	小盒壽司
+product148	煙燻鮭魚
+product149	蟹肉棒
+product15	芥末醬
+product150	書籍：電磁學
+product151	書籍：驚喜
+product152	書籍：ABC
+product153	書籍：母與子
+product154	書籍：顏色
+product155	書籍：皮奇查
+product156	書籍：從前從前
+product157	書籍：克羅克
+product158	書籍：大冒險
+product159	書籍：唐妮
+product16	義大利麵
+product160	書籍：復古
+product161	書籍：我不分享
+product162	啤酒6入組
+product163	啤酒6入組
+product164	啤酒6入組
+product165	啤酒桶
+product166	啤酒桶
+product167	伏特加
+product168	紅酒
+product169	粉紅酒
+product17	鮪魚醬
+product170	白酒
+product171	啤酒桶
+product172	頂級伏特加
+product173	日本威士忌
+product174	頂級威士忌
+product175	頂級威士忌
+product176	雙氧水
+product177	消毒液
+product178	布洛芬
+product179	乙醯胺酚
+product18	高纖穀片
+product180	OK繃
+product181	瀉藥
+product182	抗組織胺
+product183	鋅補充錠
+product184	抗氧化錠
+product185	魚油
+product186	藻類膠囊
+product187	綜合維他命
+product188	褪黑激素
+product189	防曬乳
+product19	特級麵粉
+product190	緊緻乳霜
+product191	紅蘋果盒
+product192	青蘋果盒
+product193	柑橘盒
+product194	柳橙盒
+product195	水梨盒
+product196	檸檬盒
+product197	芒果盒
+product198	酪梨盒
+product199	奇異果盒
+product2	蜂蜜穀片
+product20	黑咖啡
+product200	木瓜盒
+product201	草莓盒
+product202	櫻桃盒
+product203	朝鮮薊盒
+product204	櫛瓜盒
+product205	紅蘿蔔盒
+product206	番茄盒
+product207	馬鈴薯盒
+product208	洋蔥盒
+product209	香蕉串
+product21	盒裝雞蛋
+product210	美濃瓜
+product211	鳳梨
+product212	南瓜
+product213	西瓜
+product214	嬰兒食品：蔬菜
+product215	嬰兒食品：魚
+product216	嬰兒食品：水果
+product217	嬰兒食品：肉
+product218	營養奶昔
+product219	營養奶粉
+product22	鷹嘴豆泥
+product220	環保尿布
+product221	基本尿布
+product222	幼兒尿布
+product223	頂級尿布
+product224	蘆薈嬰兒濕紙巾
+product225	基本嬰兒濕紙巾
+product226	嬰兒爽身粉
+product227	柳橙汽水
+product228	鳳梨汽水
+product229	熱帶汽水
+product23	白麵粉
+product230	瓶裝綠茶
+product231	瓶裝紅茶
+product232	瓶裝檸檬茶
+product233	冷萃咖啡
+product234	藍莓能量飲料
+product235	芭樂能量飲料
+product236	萊姆能量飲料
+product237	綜合水果能量飲料
+product238	芒果能量飲料
+product239	可樂能量飲料
+product24	蔗糖盒
+product240	無糖能量飲料
+product241	基本草莓冰淇淋
+product242	檸檬冰淇淋
+product243	咖啡冰淇淋
+product244	巧克力脆片冰淇淋
+product245	草莓蛋白霜冰淇淋
+product246	焦糖冰淇淋
+product247	頂級草莓冰淇淋
+product248	草莓起司蛋糕冰淇淋
+product249	頂級焦糖冰淇淋
+product25	砂糖
+product250	粉紅草莓冰淇淋
+product251	酒香冰淇淋
+product252	鷹嘴豆罐頭
+product253	肉丸罐頭
+product254	扁豆罐頭
+product255	番茄湯罐頭
+product256	玉米罐頭
+product257	豌豆罐頭
+product258	草莓種子
+product259	覆盆子種子
+product26	通心粉
+product260	藍莓種子
+product261	鳳梨種子
+product262	檸檬種子
+product263	番茄種子
+product264	甜椒種子
+product265	小黃瓜種子
+product266	櫻桃蘿蔔種子
+product267	紅蘿蔔種子
+product268	草皮種子
+product269	罌粟種子
+product27	有機砂糖
+product270	鬱金香種子
+product271	向日葵種子
+product272	矮牽牛種子
+product273	小耙子（A）
+product274	小耙子（B）
+product275	小鏟子
+product276	小鬆土器
+product277	培養土
+product278	肥料
+product279	花盆底盤
+product28	紅糖
+product280	花盆
+product281	3號電池
+product282	4號電池
+product283	1號電池
+product284	9V方型電池
+product285	萬用電視遙控器
+product286	萬用手機充電器
+product287	基本預付卡手機
+product288	基本滑鼠
+product289	WiFi 接收器
+product29	葵花油
+product290	基本耳機
+product291	基本鍵盤
+product292	基本遊戲手把
+product293	隨身碟（128GB）
+product294	隨身碟（256GB）
+product295	隨身碟（512GB）
+product296	隨身碟（1TB）
+product297	基本喇叭
+product298	基本耳罩式耳機
+product299	基本遊戲主機
+product3	米
+product30	馬鈴薯泥
+product300	大蒜盒
+product301	蘑菇盒
+product302	甜椒盒
+product303	生菜盒
+product304	椰子
+product305	花椰菜
+product306	花生
+product307	杏仁果
+product308	榛果
+product309	開心果
+product31	袋裝馬鈴薯
+product310	葡萄乾
+product311	腰果
+product312	核桃仁
+product313	椰子片
+product314	泡打粉
+product315	小蘇打
+product316	蛋糕粉
+product317	可可粉
+product318	太白粉
+product319	糖霜擠花筆
+product32	濃縮咖啡
+product320	糖珠
+product321	香草精
+product322	糖果桶：南瓜
+product323	糖果桶：幽靈
+product324	糖果桶：木乃伊
+product325	糖果桶：骷髏
+product326	糖果桶：殭屍
+product327	蛋奶酒
+product328	香料熱紅酒
+product329	聖誕老人巧克力罐
+product33	印度香米
+product330	雪人巧克力罐
+product331	薑餅人
+product332	薑餅屋
+product333	生產袋 A
+product334	生產袋 B
+product335	生產袋 C
+product336	生產袋 D
+product337	生產袋 E
+product338	生產袋 F
+product34	長粒米
+product35	咖啡
+product36	特級義大利麵
+product37	巧克力穀片
+product38	頂級礦泉水
+product39	礦泉水
+product4	鹽
+product40	糖粉
+product41	家庭號砂糖
+product42	家庭號紅糖
+product43	艾曼塔起司
+product44	格呂耶爾起司
+product45	脫脂起司
+product46	水果優格
+product47	香草優格
+product48	鋁箔包牛奶
+product49	奶油
+product5	糖
+product50	帕瑪森起司
+product51	瑞吉亞諾起司
+product52	莫札瑞拉起司
+product53	脫脂優格
+product54	可樂6入組
+product55	汽水6入組
+product56	無咖啡因汽水6入組
+product57	汽水瓶
+product58	可樂瓶
+product59	無糖汽水瓶
+product6	人造奶油
+product60	頂級汽水
+product61	碳烤披薩
+product62	起司鍋
+product63	脆皮火腿
+product64	火腿起司可麗餅
+product65	薯條
+product66	脆薯球
+product67	四季豆
+product68	四起司披薩
+product69	四季披薩
+product7	麵粉
+product70	冷凍綜合蔬菜
+product71	冷凍雞塊
+product72	肉醬千層麵
+product73	蔬菜千層麵
+product74	牙膏
+product75	衛生紙
+product76	洗手乳
+product77	酪梨洗髮精
+product78	蛋白洗髮精
+product79	沐浴乳
+product8	蘋果汁
+product80	衛生紙
+product81	芒果香皂
+product82	極柔洗髮精
+product83	荷荷芭蜂蜜洗髮精
+product84	摩洛哥油洗髮精
+product85	廚房紙巾
+product86	雙層衛生紙
+product87	檸檬香皂
+product88	頂級沐浴乳
+product89	嬰兒洗髮精
+product9	橄欖油
+product90	洗衣精
+product91	去污劑
+product92	玻璃清潔劑
+product93	洗碗錠
+product94	洗碗機
+product95	漂白水
+product96	漂白水（大瓶）
+product97	衣物柔軟精
+product98	頂級洗衣精
+product99	殺蟲劑
+productCategory0	基本商品 I
+productCategory1	基本商品 II
+productCategory10	冷凍食品 II
+productCategory11	衛生用品 I
+productCategory12	衛生用品 II
+productCategory13	衛生用品 III
+productCategory14	清潔用品 I
+productCategory15	清潔用品 II
+productCategory16	甜食零食 I
+productCategory17	甜食零食 II
+productCategory18	甜食零食 III
+productCategory19	甜食零食 IV
+productCategory2	基本商品 III
+productCategory20	肉類 I
+productCategory21	罐頭食品 I
+productCategory22	茶類 I
+productCategory23	海鮮 I
+productCategory24	書籍 I
+productCategory25	書籍 II
+productCategory26	酒類 I
+productCategory27	酒類 II
+productCategory28	酒類 III
+productCategory29	藥妝 I
+productCategory3	基本商品 IV
+productCategory30	藥妝 II
+productCategory31	蔬果 I
+productCategory32	蔬果 II
+productCategory33	蔬果 III
+productCategory34	蔬果 IV
+productCategory35	嬰幼用品 I
+productCategory36	嬰幼用品 II
+productCategory37	汽水飲料 II
+productCategory38	汽水飲料 III
+productCategory39	甜食零食 V
+productCategory4	基本商品 V
+productCategory40	甜食零食 VI
+productCategory41	罐頭食品 II
+productCategory42	園藝 I
+productCategory43	園藝 II
+productCategory44	園藝 III
+productCategory45	園藝 IV
+productCategory46	小型家電 I
+productCategory47	小型家電 II
+productCategory48	小型家電 III
+productCategory49	蔬果 V
+productCategory5	基本商品 VI
+productCategory50	甜食零食 VII
+productCategory51	基本商品 VII
+productCategory52	萬聖節 I
+productCategory53	聖誕節 I
+productCategory6	乳製品 I
+productCategory7	乳製品 II
+productCategory8	汽水飲料 I
+productCategory9	冷凍食品 I
+productGroup0	基本商品
+productGroup1	乳製品
+productGroup10	海鮮
+productGroup11	書籍
+productGroup12	酒類
+productGroup13	藥妝
+productGroup14	蔬果
+productGroup15	嬰幼用品
+productGroup16	園藝
+productGroup17	小型家電
+productGroup18	季節限定
+productGroup2	汽水飲料
+productGroup3	冷凍食品
+productGroup4	衛生用品
+productGroup5	清潔用品
+productGroup6	甜食零食
+productGroup7	肉類
+productGroup8	罐頭食品
+productGroup9	茶類
+productRelated0	單位售價
+productorder	商品訂單
+productsorting0	不排序
+productsorting1	依體積
+productsorting2	依總存量（少到多）
+productsorting3	依倉庫存量（少到多）
+productsorting4	依貨架存量（少到多）
+punish	懲罰
+rdown	價格捨去零頭
+removeallperm	加入時移除所有權限
+removemoney	[右鍵] 拿錢
+rentcost	租金：
+requires	需求
+restock	補貨
+rststtngs0	重設遊戲設定
+rststtngs1	設定已清除
+rw0	向前移動
+rw1	向前移動
+rw10	滑鼠向右
+rw11	滑鼠向左
+rw12	主要動作
+rw13	次要動作
+rw14	放置
+rw15	丟棄物品
+rw16	跳躍
+rw17	奔跑
+rw18	建築選單
+rw19	選單下一項
+rw2	向後移動
+rw20	選單上一項
+rw21	聊天
+rw22	語音聊天
+rw23	暫停選單
+rw24	蹲下
+rw25	建築：下一個分頁
+rw26	建築：上一個分頁
+rw27	舞蹈 1
+rw28	舞蹈 2
+rw29	舞蹈 3
+rw3	水平移動
+rw30	舞蹈 4
+rw31	舞蹈 5
+rw32	舞蹈 6
+rw33	舞蹈 7
+rw34	舞蹈 8
+rw35	舞蹈 9
+rw36	小鍵盤 0
+rw37	小鍵盤 1
+rw38	小鍵盤 2
+rw39	小鍵盤 3
+rw4	向右移動
+rw40	小鍵盤 4
+rw41	小鍵盤 5
+rw42	小鍵盤 6
+rw43	小鍵盤 7
+rw44	小鍵盤 8
+rw45	小鍵盤 9
+rw46	小鍵盤 刪除
+rw47	小鍵盤 小數點
+rw48	小鍵盤 確定
+rw49	吸附
+rw5	向左移動
+rw6	滑鼠垂直
+rw7	滑鼠向上
+rw8	滑鼠向下
+rw9	滑鼠水平
+sallprices	將全部價格設為成本百分比
+save	套用
+season0	春季
+season1	夏季
+season2	秋季
+season3	冬季
+security	保全
+shoplist	購物清單
+skill01	員工 I
+skill02	員工 II
+skill03	員工 III
+skill04	員工 IV
+skill05	員工 V
+skill0a	可額外僱用一名員工
+skill1	免費早晨咖啡
+skill11	員工 VI
+skill12	員工 VII
+skill13	員工 VIII
+skill14	員工 IX
+skill15	員工 X
+skill16	收銀訓練 I
+skill16a	員工結帳時處理商品的速度加快
+skill17	收銀訓練 II
+skill18	收銀訓練 III
+skill19	補貨訓練 I
+skill19a	員工上架商品的速度加快
+skill1a	員工移動速度 +20%
+skill2	行銷課程 I
+skill20	補貨訓練 II
+skill21	更多免費咖啡
+skill22	免費能量飲料 I
+skill23	免費能量飲料 II
+skill24	回收課程 II
+skill24a	員工會主動回收紙箱
+skill25	親切介面
+skill25a	顧客更常使用自助結帳機
+skill26	員工 XI
+skill27	員工 XII
+skill28	回收容器
+skill28a	最近的垃圾桶會更換為回收容器。
+skill29	MART OS 2.0
+skill29a	定價機軟體升級，並可設定自動調價功能
+skill2a	員工結帳時多賺 10% 的錢
+skill3	培訓課程
+skill30	滴滴答答快轉鐘
+skill30a	夜間打烊時，店長可用經理室的新時鐘加速時間
+skill31	省電燈泡
+skill31a	整體電力消耗減少 20%
+skill32	友善介面
+skill32a	顧客使用自助結帳機的速度加快
+skill33	物流管理
+skill33a	拿箱子時，玩家可以看到箱內商品在賣場和倉庫中的擺放位置
+skill34	外部會計
+skill34a	每天開始時若資金充足，帳單會自動繳納
+skill35	特價 I
+skill35a	每日特價數量上限 +2
+skill36	特價 II
+skill37	特價 III
+skill38	棧板展示架
+skill38a	解鎖多種棧板展示架，用來陳列大型商品
+skill39	人力資源
+skill39a	可再僱用六名員工
+skill3a	員工移動速度 +20%
+skill4	回收課程
+skill40	招募 I
+skill40a	每天獲得一次員工重新抽籤機會
+skill41	招募 II
+skill42	說服技巧
+skill42a	用滅火器把店外路人推進店裡，有 33% 機率把他們變成顧客
+skill43	壞天氣加成
+skill43a	暴風雨或下雪天會產生更多網路訂單，且其收入三倍計算
+skill44	吸塵擴充
+skill44a	迷你搬運車加裝裝置，可吸起地上的被偷商品
+skill45	蒸餾附加器
+skill45a	生產機台兼具蒸餾功能，可釀造各式酒品
+skill4a	回收紙箱的收益四倍
+skill5	空調
+skill5a	每天吸引更多顧客
+skill6	WiFi 連線
+skinshats	造型與帽子
+skpttrl	略過教學
+slctstrcntn	選擇要繼續的商店
+sledvce0	今日特價
+sledvce1	特價上限
+slemssage0	今天的特價數量已用完
+slemssage1	此商品已設定特價：
+snapping0	切換吸附模式
+snapping1	吸附模式
+snapping2	無
+snapping3	網格：中央
+snapping4	網格：背面
+snapping5	家具
+snowtkn	拿到雪花代幣了！
+srcandytkn	拿到酸糖代幣了！
+startkn	拿到星星代幣了！
+statanalyzedCustomers	監視器分析過的顧客
+statbenefits	獲利
+statbystandersConvertedIntoCustomers	轉化為顧客的路人
+statcaughtThievesWhenAnalyzing	監視器抓到的竊賊
+statcomplainedAboutFilth	髒亂投訴次數
+statcostPerProductAcquiredList	各產品進貨成本
+statcustomers	顧客
+statemployeesCost	員工薪資
+statextraProductsSoldThankToSales	因特價多賣出的商品
+statfranchiseExperience	加盟經驗
+statlightCost	燈光電費
+statmoneyMadeByOnlineOrders	網路訂單收入
+statmoneySpentOnProducts	進貨支出
+statnotFoundProductsCount	沒找到的商品
+statonlineOrdersMade	完成的網路訂單
+statpaidInvoices	已繳帳單
+statproductsAcquiredList	各產品進貨量
+statproductsPlacedInContainers	已上架商品
+statproductsSoldList	各產品銷量
+statrentCost	租金
+statrepairedDevices	維修過的設備
+statrevenuePerProductSoldList	各產品營收
+stats	統計
+stats0	總收入
+stats1	總上架商品數
+stats10	監視器分析顧客次數
+stats11	監視器抓到竊賊次數
+stats12	至今累積銷售次數
+stats13	投入打包機的紙箱
+stats14	回收的紙板捆
+stats15	因特價多賣出的商品數
+stats16	已繳帳單數
+stats17	組裝的網路訂單數
+stats18	網路訂單收入
+stats19	維修的設備與家具
+stats2	總回收紙箱數
+stats20	用搬運車卸下的箱子
+stats21	用搬運車吸起的被偷商品
+stats3	服務過的顧客總數
+stats4	結帳商品總數
+stats5	收集的垃圾總數
+stats6	連續正確找零次數
+stats7	毆打小偷次數
+stats8	收回的被偷商品
+stats9	摸貓次數
+statsalesMade	完成的銷售
+statsfoundtoo	前一天沒找到的商品
+statsnofound	前一天被嫌太貴的商品
+statstolenProductsCollectedFromFloor	從地上收回的被偷商品
+stattimesRobbed	被搶次數
+stattooExpensiveProductsCount	被嫌太貴的商品
+stattotalBalesRecycled	回收的紙板捆
+stattotalBoxesAddedToBaler	投入打包機的紙箱數
+stattotalBoxesRecycled	回收的紙箱數
+stattotalProductsAcquiredThisDay	當日總進貨量
+stattotalTrashCollected	收集的垃圾
+stattotalsProductsSoldThisDay	當日總銷量
+storage	倉儲
+stream	設定電視影片／實況來源
+sttcsdsk0	一般資料
+sttcsdsk1	產品資料
+sttcsdsk2	清除圖表
+sttcsdsk3	日期範圍
+sttcsdsk4	選擇日期
+sttcsdsk5	圖表已滿，請先清除。
+supermarket	超市
+supermarketcolor	招牌顏色
+supermarketname	超市名稱
+surveillance1	顧客已檢查過
+tabtitle0	基本家具
+tabtitle1	裝飾
+tabtitle10	搞怪裝飾
+tabtitle11	生產部貨架
+tabtitle12	生產部機台
+tabtitle13	裝飾：樹木
+tabtitle2	設備
+tabtitle3	燈具
+tabtitle4	季節：萬聖節
+tabtitle5	員工休息室
+tabtitle6	季節：聖誕節
+tabtitle7	裝飾：植物
+tabtitle8	建築結構
+tabtitle9	次要家具
+timesrobbed	被搶次數：
+title0	新商店
+title1	載入商店
+title2	加入商店
+title3	設定
+title4	離開
+titledisclaimer1	連線遊戲時補貨會缺商品？到選項裡開啟新的「高延遲模式」
+tlsognzer0	收納架上沒有更多物品了
+tlsognzer1	這種物品不能放在這裡
+tlsognzer2	收納架已滿
+tlsognzer3	離開前請先把托盤清空到垃圾桶
+tmprtrdsk0	室外溫度
+tmprtrdsk1	今日舒適範圍
+tmprtrdsk2	所需空調數量
+tmprtrdsk3	已放置空調數量
+tmprtrdsk4	店內溫度
+tooexpensiveproducts	被嫌太貴的商品：
+totalcustomers	顧客總數：
+tsv1	工作日時間：
+tsv2	自動存檔中……
+tsv3	分鐘
+tsv4	儲存並離開
+tsv5	確定要儲存並離開遊戲嗎？
+tsv6	自動存檔
+tutorial5	很好。現在點選「基本商品 I」分類。
+tutorial7	太棒了。現在到外面找到剛買的紙箱，按一下就能搬起來。
+tvautosync0	自動同步
+tvautosync1	允許所有玩家更改網址
+tvautosync2	YouTube 影片
+tvcontrol	電視控制
+tvhook0	關閉
+tvhook1	預留影片
+tvhook2	網址影片
+tvhook3	瀏覽器
+tvhook4	Twitch／YT 影片
+unlocks	解鎖
+unstckplyr	卡住脫離
+weekday0	週日
+weekday1	週一
+weekday2	週二
+weekday3	週三
+weekday4	週四
+weekday5	週五
+weekday6	週六
+wthr0	天氣
+wthr1	日曆
+xcessve	太超過了……
+yes	是
+yprice	你的售價

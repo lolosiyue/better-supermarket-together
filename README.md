@@ -1,0 +1,115 @@
+# Better Supermarket Together
+
+[English](README.en.md) · 繁體中文
+
+為 **Supermarket Together** 製作的 BepInEx 5 生活品質插件，集中處理自動補貨、生產、倉庫整理、定價、促銷、清潔及員工管理。前身為 **AutoRestock2230**。
+
+## 功能
+
+| 功能 | 說明 |
+| --- | --- |
+| 日間與夜間自動採購 | 在指定遊戲時段掃描存貨，低於門檻時下單補貨。日間預設 08:00–22:00，夜間 22:30–23:54；可選擇只在開門後進行日間採購。 |
+| 分類最低庫存 | 一般商品、生產原料、衛生及清潔用品可設定不同的補貨門檻。設定面板第 2 頁可逐分類調整。 |
+| 採購條件 | 可設定保留資金、每次箱數、每日／每夜訂購次數及冷卻時間；預設只補當天出現過的商品，並連續確認缺貨，減少搬運瞬間造成的誤判。 |
+| 閒置員工閘門 | 可等到有空閒的倉儲／補貨員工才下單，避免送貨一直堆積。啟用時使用獨立的最短補單間隔。 |
+| 聰明補貨 | 調整 NPC 的補貨及搬箱選擇，優先處理缺貨比例較高的貨架、優先清出剩餘量較少的箱子，並避開已被其他員工占用的箱子。 |
+| 倉庫集中擺放 | 員工放箱入倉時，優先選擇已存放同種商品的架子，減少分散存放。 |
+| 夜間倉庫整理 | 打烊後將同種商品集中到主要存放架。預設 23:00 執行，每晚最多搬移 30 箱，可自行調整。 |
+| 自動生產排程 | 記住生產貨架、箱子及現有排程的成品配方，按生產部存量門檻補上排程，保留同產品的不同客製變體，並避免重複排程。 |
+| 自動補入生產原料 | 從一般倉庫取用基礎及客製配方所需的原料，加入工作台托盤；實際生產沿用遊戲的生產員工與工作台。 |
+| 自動定價 | 每天指定時間依目前進貨成本更新已解鎖商品的售價，也會在解鎖商品後重新評估。預設售價為成本的 200%，可調整倍率及小數處理。 |
+| 自動促銷 | 每天從符合最低庫存的商品中選擇促銷品；可使用庫存與近期銷量估計滯銷程度，沒有銷量資料時退回庫存排序。預設折扣 15%。 |
+| 自動開啟訂單部 | 超市開門時，自動啟用已解鎖的訂單部。 |
+| 額外員工名額 | 使用遊戲金錢購買額外僱用上限。預設依序花費 $5,000、$10,000、$15,000……，名額在員工載入完成後套用。 |
+| 員工改名 | 可手動輸入名字、個別隨機改名或全部隨機改名。支援中文與英文風格；英文名字例如 Alex Carter、Emma Wilson。名字最多 25 字，手動選名後不再被讀檔時的預設名單覆蓋。 |
+| 清潔機器人巡邏 | 沒有垃圾時在店內巡邏，重新尋找附近尚未被認領的垃圾；巡邏半徑可調整。 |
+| 繁體中文修正 | 附帶繁中覆蓋字串表，修正部分遊戲內的翻譯。僅在遊戲語言為中文時套用。 |
+| 遊戲內設定與狀態 | 管理看板的插件按鈕、F10 設定面板、F8 狀態列、F9 狀態報告及 F11 診斷日誌。 |
+
+## 安裝
+
+需求：Windows 版 Supermarket Together，以及安裝在遊戲根目錄的 **BepInEx 5 x64**。本機編譯使用 BepInEx 5.4.23.2 與 Unity 2023.2.22f1 的遊戲組件；其他版本尚未完整驗收。
+
+1. 關閉遊戲。尚未安裝 BepInEx 5 的話，先依其安裝方式完成設定並啟動遊戲一次。
+2. 解壓安裝包，將包內的 `BepInEx` 資料夾合併到遊戲根目錄。
+3. 確認下列兩個檔案放在同一個資料夾：
+
+   ```text
+   BepInEx/plugins/BetterSupermarketTogether/
+   ├── BetterSupermarketTogether.dll
+   └── BetterSupermarketTogether_i18n_zhTW.tsv
+   ```
+
+4. 重開遊戲並讀取商店，在管理看板開啟插件設定。
+
+從 AutoRestock2230 升級時，請先移出或停用舊的 `AutoRestock2230.dll`，避免同時載入兩份。新版本沿用原設定檔與插件識別碼，因此原本的設定、配方及已購名額可繼續使用。請保留原設定檔。
+
+## 使用與快捷鍵
+
+| 入口 | 功能 |
+| --- | --- |
+| 管理看板 → 插件，或 F10 | 開關設定面板；第 1 頁為主要設定，第 2 頁為分類庫存門檻。 |
+| F10 → 員工改名 → 隨機風格 | 切換 `中文 / Chinese` 與 `英文 / English`，再點個別「隨機」或「全部隨機改名」。切換風格本身不會更改員工名字。 |
+| F8 | 開關左上角狀態列。 |
+| F9 | 顯示完整狀態報告。 |
+| F11 | 將員工、名額、配方及存貨資料寫入 `BepInEx/LogOutput.log`，方便回報問題。 |
+
+建議先打開管理看板再操作 F10 面板，方便使用游標。快捷鍵可在設定檔中調整。
+
+## 設定檔
+
+為沿用舊版資料，設定檔名稱保留為：
+
+```text
+BepInEx/config/local.supermarkettogether.autorestock2230.cfg
+```
+
+大部分常用設定可以直接在遊戲內修改。若手動編輯設定檔，先關閉遊戲。
+
+例如，將隨機名字改為英文並自訂名字池：
+
+```ini
+[Naming]
+RandomNameStyle = English
+EnglishRandomNames = Alex Carter,Emma Wilson,James Parker,Olivia Bennett
+```
+
+中文風格使用 `RandomNameStyle = Chinese`，名字池由 `RandomNames` 設定。首次安裝預設中文風格，更新不會自動改掉現有員工的名字。
+
+| 設定 | 首次安裝預設 | 用途 |
+| --- | --- | --- |
+| `General.OnlyHost` | `true` | 多人時只由主機執行主要自動化，減少重複採購。 |
+| `Daytime.OnlyWhenOpen` | `false` | 日間可在開業前開始補貨。 |
+| `Safety.CheckIntervalSeconds` | `10` | 存貨掃描間隔，單位為現實秒。 |
+| `Restock.GateOnIdleEmployee` | `true` | 等待空閒倉儲／補貨員工。 |
+| `Restock.MinTotalStockDefault` | `0` | 一般商品的最低庫存基準。 |
+| `Restock.MinTotalStockProduction` | `100` | 生產原料的補貨門檻。 |
+| `Restock.GroupMinStock` | `4:100,5:100` | 分類門檻；4 為衛生用品，5 為清潔用品。 |
+| `Production.AutoQueueThreshold` | `0` | 生產部成品存量 ≤ 此值時補上生產排程。 |
+| `Pricing.Percentage` | `200` | 售價為目前成本的百分比。 |
+| `Promo.Discount` | `15` | 促銷折扣百分比。 |
+| `Staff.ExtraSlotBaseCost` | `5000` | 第 1 個額外名額價格，後續按購買次數增加。 |
+| `Naming.RandomNameStyle` | `Chinese` | 隨機名字的風格，亦可使用 `English`。 |
+
+表格是新安裝的預設值；更新時會保留既有值。`ExtraSlotsPurchased`、`LearnedCombinables` 與 `KnownVariants` 由插件維護。額外名額與學習配方保存在本機設定檔，目前不是各商店存檔獨立管理。
+
+## 編譯與打包
+
+需要 .NET SDK（本機使用 .NET 10 SDK），以及本機已安裝的遊戲與 BepInEx 組件。原始碼不包含遊戲或 BepInEx 的 DLL。
+
+```powershell
+./build.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
+./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
+```
+
+`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.0.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
+
+## 使用範圍與目前狀態
+
+- 自動採購會花費遊戲資金；可自行調整門檻與資金保留額。生產仍需要配方、原料、工作台及生產員工。
+- 多人遊戲建議由主機安裝並保留 `OnlyHost = true`。員工改名與名額購買由主機操作。
+- 本次 1.2.0 完成編譯確認，沒有重新執行完整對局或 GUI 驗收；英文隨機風格的遊戲內外觀仍待實際遊玩確認。
+- 英文 README 提供英文使用說明；目前多數插件設定介面仍使用繁體中文。
+- 回報問題時請提供遊戲版本、插件版本與相關日誌片段。
+
+本專案為非官方模組，與遊戲開發商沒有隸屬關係。程式碼採用 [MIT License](LICENSE)。版本變更見 [CHANGELOG.md](CHANGELOG.md)。
