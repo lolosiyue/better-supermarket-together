@@ -22,16 +22,16 @@ internal static class WarehouseOptimizer
 			return -1;
 		}
 		int num = productInfoArray.Length / 2;
-		for (int i = 0; i < num; i++)
+		for (int i = 0; i < num && i < transform.childCount; i++)
 		{
 			if (productInfoArray[i * 2] == productId && productInfoArray[i * 2 + 1] <= 0 && transform.GetChild(i).childCount <= 0 && !claimedSlots.Contains(SmarterRestockerTaskPatch.SlotKey(containerIndex, i * 2)))
 			{
 				return i;
 			}
 		}
-		for (int j = 0; j < num; j++)
+		for (int j = 0; j < num && j < transform.childCount; j++)
 		{
-			if (productInfoArray[j * 2] == -1 && !claimedSlots.Contains(SmarterRestockerTaskPatch.SlotKey(containerIndex, j * 2)))
+			if (productInfoArray[j * 2] == -1 && transform.GetChild(j).childCount == 0 && !claimedSlots.Contains(SmarterRestockerTaskPatch.SlotKey(containerIndex, j * 2)))
 			{
 				return j;
 			}
@@ -41,7 +41,7 @@ internal static class WarehouseOptimizer
 
 	internal static void MoveBox(Data_Container source, int sourcePair, Data_Container target, int targetRow, int productId, int count)
 	{
-		source.EmployeeUpdateArrayValuesStorage(sourcePair, -1, -1);
+		source.EmployeeUpdateArrayValuesStorage(sourcePair, source.transform.Find("CanvasSigns") != null ? productId : -1, -1);
 		target.EmployeeUpdateArrayValuesStorage(targetRow * 2, productId, count);
 	}
 }

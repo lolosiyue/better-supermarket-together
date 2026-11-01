@@ -57,116 +57,71 @@ internal static class SmarterManufacturerTaskPatch
         RestockAssignments.GuardAssignment(__instance, employeeRequesterOBJ, true, ref __result);
     }
 
-	private static int[] SelectTask(NPC_Manager npc, GameObject requester, NPC_Info requesterInfo)
-	{
-		if (npc.manufacturingShelvesOBJ == null || npc.manufacturingStorageShelvesOBJ == null || npc.employeeParentOBJ == null)
-		{
-			return RestockAssignments.NoTask();
-		}
-		List<string> list = new List<string>();
-		SmarterRestockerTaskPatch.AddTasks(npc.lowManufacturingProductCountList, list);
-		SmarterRestockerTaskPatch.AddTasks(npc.mediumManufacturingProductCountList, list);
-		SmarterRestockerTaskPatch.AddTasks(npc.highManufacturingProductCountList, list);
-		SmarterRestockerTaskPatch.AddTasks(npc.veryManufacturingHighProductCountList, list);
-		if (list.Count == 0)
-		{
-			return RestockAssignments.NoTask();
-		}
-        RestockAssignments.Collect(npc, requester, true, out var occupiedShelves, out var reservedSources);
-		List<RowCandidate> list2 = new List<RowCandidate>();
-		HashSet<long> hashSet3 = new HashSet<long>();
-		Transform transform2 = npc.manufacturingShelvesOBJ.transform;
-		foreach (string item in list)
-		{
-			string[] array = item.Split(new char[1] { '|' });
-			if (array.Length < 7)
-			{
-				continue;
-			}
-			string text = array[6];
-			if (!int.TryParse(array[0], out var result) || !int.TryParse(array[1], out var result2) || !int.TryParse(array[4], out var result3) || !hashSet3.Add(SmarterRestockerTaskPatch.SlotKey(result, result2)) || occupiedShelves.Contains(result) || result < 0 || result >= transform2.childCount)
-			{
-				continue;
-			}
-			ManufacturingContainer component2 = transform2.GetChild(result).GetComponent<ManufacturingContainer>();
-			if (component2 == null || component2.productInfoArray == null || component2.combinableInfoArray == null)
-			{
-				continue;
-			}
-			int[] productInfoArray = component2.productInfoArray;
-			if (result2 >= 0 && result2 + 1 < productInfoArray.Length && productInfoArray[result2] == result3 && !(component2.combinableInfoArray[result2 / 2] != text))
-			{
-				int count = productInfoArray[result2 + 1];
-				int num = npc.GetMaxManufacturingProductsPerRow(result, result3);
-				if (num <= 0)
-				{
-					num = 1;
-				}
-				list2.Add(new RowCandidate(result, result2, result3, count, num, text));
-			}
-		}
-		if (list2.Count == 0)
-		{
-			return RestockAssignments.NoTask();
-		}
-		list2.Sort((RowCandidate a, RowCandidate b) =>
-		{
-			int num8 = ((float)a.Count / (float)a.MaxPerRow).CompareTo((float)b.Count / (float)b.MaxPerRow);
-			if (num8 != 0)
-			{
-				return num8;
-			}
-			int count2 = a.Count;
-			num8 = count2.CompareTo(b.Count);
-			if (num8 != 0)
-			{
-				return num8;
-			}
-			count2 = a.ShelfIdx;
-			return count2.CompareTo(b.ShelfIdx);
-		});
-		Transform transform3 = npc.manufacturingStorageShelvesOBJ.transform;
-		foreach (RowCandidate item2 in list2)
-		{
-			int num2 = -1;
-			int num3 = -1;
-			int num4 = int.MaxValue;
-			for (int num5 = 0; num5 < transform3.childCount; num5++)
-			{
-				ManufacturingContainer component3 = transform3.GetChild(num5).GetComponent<ManufacturingContainer>();
-				if (component3 == null || component3.productInfoArray == null || component3.combinableInfoArray == null)
-				{
-					continue;
-				}
-				int[] productInfoArray2 = component3.productInfoArray;
-				for (int num6 = 0; num6 + 1 < productInfoArray2.Length; num6 += 2)
-				{
-					if (productInfoArray2[num6] != item2.ProductId || component3.combinableInfoArray[num6 / 2] != item2.Combinable)
-					{
-						continue;
-					}
-					int num7 = productInfoArray2[num6 + 1];
-					if (num7 > 0 && !reservedSources.Contains(SmarterRestockerTaskPatch.SlotKey(num5, num6)) && num7 < num4)
-					{
-						num4 = num7;
-						num2 = num5;
-						num3 = num6;
-						if (num7 == 1)
-						{
-							break;
-						}
-					}
-				}
-			}
-			if (num2 >= 0)
-			{
-				if (requesterInfo != null)
-				{
-					requesterInfo.packagingAssignedOrderData = item2.Combinable;
-				}
-				return new int[6] { item2.ShelfIdx, item2.ShelfPair, num2, num3, item2.ProductId, item2.ProductId };
-			}
-		}
-		return RestockAssignments.NoTask();
-	}
+    private static int[] SelectTask(NPC_Manager npc, GameObject requester, NPC_Info requesterInfo)
+    {
+        if (npc.manufacturingShelvesOBJ == null || npc.manufacturingStorageShelvesOBJ == null || npc.employeeParentOBJ == null)
+            return RestockAssignments.NoTask();
+        var route = new EmployeeNavigation(requester);
+        if (!route.Ready) return RestockAssignments.NoTask();
+        RestockAssignments.Collect(npc, requester, true, out var occupied, out var reserved);
+        var rows = new List<RowCandidate>();
+        var shelves = npc.manufacturingShelvesOBJ.transform;
+        // Read current rows directly: vanilla lists are partial and may be five seconds old.
+        for (int shelf = 0; shelf < shelves.childCount; shelf++)
+        {
+            if (occupied.Contains(shelf)) continue;
+            var target = shelves.GetChild(shelf).GetComponent<ManufacturingContainer>();
+            if (target == null || target.productInfoArray == null || target.standSpot == null) continue;
+            var contents = target.productInfoArray;
+            for (int pair = 0; pair + 1 < contents.Length; pair += 2)
+            {
+                int product = contents[pair], count = contents[pair + 1];
+                if (product < 0 || count < 0) continue;
+                int capacity = npc.GetMaxManufacturingProductsPerRow(shelf, product);
+                if (capacity <= 0 || count >= capacity || !route.CanReach(target.standSpot.transform.position)) continue;
+                if (target.combinableInfoArray == null || pair / 2 >= target.combinableInfoArray.Length) continue;
+                string recipe = RepairPolicies.NormalizeRecipe(target.combinableInfoArray[pair / 2]);
+                if (recipe == null) continue;
+                rows.Add(new RowCandidate(shelf, pair, product, count, capacity, recipe));
+            }
+        }
+        rows.Sort((a, b) =>
+        {
+            int ratio = ((float)a.Count / a.MaxPerRow).CompareTo((float)b.Count / b.MaxPerRow);
+            if (ratio != 0) return ratio;
+            int count = a.Count.CompareTo(b.Count);
+            return count != 0 ? count : a.ShelfIdx.CompareTo(b.ShelfIdx);
+        });
+        var warehouse = npc.manufacturingStorageShelvesOBJ.transform;
+        foreach (var row in rows)
+        {
+            int sourceShelf = -1, sourcePair = -1, smallestBox = int.MaxValue;
+            var destination = shelves.GetChild(row.ShelfIdx).GetComponent<ManufacturingContainer>().standSpot.transform.position;
+            for (int shelf = 0; shelf < warehouse.childCount; shelf++)
+            {
+                var source = warehouse.GetChild(shelf).GetComponent<ManufacturingContainer>();
+                if (source == null || source.productInfoArray == null || source.standSpot == null) continue;
+                var contents = source.productInfoArray;
+                for (int pair = 0; pair + 1 < contents.Length; pair += 2)
+                {
+                    int count = contents[pair + 1];
+                    if (contents[pair] != row.ProductId || count <= 0 || count >= smallestBox ||
+                        reserved.Contains(SmarterRestockerTaskPatch.SlotKey(shelf, pair))) continue;
+                    if (source.combinableInfoArray == null || pair / 2 >= source.combinableInfoArray.Length ||
+                        RepairPolicies.NormalizeRecipe(source.combinableInfoArray[pair / 2]) != row.Combinable) continue;
+                    if (!route.CanTravel(source.standSpot.transform.position, destination)) continue;
+                    sourceShelf = shelf;
+                    sourcePair = pair;
+                    smallestBox = count;
+                }
+            }
+            if (sourceShelf < 0) continue;
+            // Vanilla pickup compares the exact stored string; normalize only for matching.
+            if (requesterInfo != null)
+                requesterInfo.packagingAssignedOrderData = warehouse.GetChild(sourceShelf).GetComponent<ManufacturingContainer>().combinableInfoArray[sourcePair / 2];
+            return new[] { row.ShelfIdx, row.ShelfPair, sourceShelf, sourcePair, row.ProductId, row.ProductId };
+        }
+        return RestockAssignments.NoTask();
+    }
+
 }

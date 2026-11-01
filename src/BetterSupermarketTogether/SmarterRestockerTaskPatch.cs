@@ -55,109 +55,64 @@ internal static class SmarterRestockerTaskPatch
         RestockAssignments.GuardAssignment(__instance, employeeRequesterOBJ, false, ref __result);
     }
 
-	private static int[] SelectTask(NPC_Manager npc, GameObject requester)
-	{
-		if (npc.shelvesOBJ == null || npc.storageOBJ == null || npc.employeeParentOBJ == null)
-		{
-			return RestockAssignments.NoTask();
-		}
-		List<string> list = new List<string>();
-		AddTasks(npc.lowProductCountList, list);
-		AddTasks(npc.mediumProductCountList, list);
-		AddTasks(npc.highProductCountList, list);
-		AddTasks(npc.veryHighProductCountList, list);
-		if (list.Count == 0)
-		{
-			return RestockAssignments.NoTask();
-		}
-        RestockAssignments.Collect(npc, requester, false, out var occupiedShelves, out var reservedSources);
-		List<RowCandidate> list2 = new List<RowCandidate>();
-		HashSet<long> hashSet3 = new HashSet<long>();
-		Transform transform2 = npc.shelvesOBJ.transform;
-		foreach (string item in list)
-		{
-			string[] array = item.Split(new char[1] { '|' });
-			if (array.Length < 6 || !int.TryParse(array[0], out var result) || !int.TryParse(array[1], out var result2) || !int.TryParse(array[4], out var result3) || !hashSet3.Add(SlotKey(result, result2)) || occupiedShelves.Contains(result) || result < 0 || result >= transform2.childCount)
-			{
-				continue;
-			}
-			Data_Container component2 = transform2.GetChild(result).GetComponent<Data_Container>();
-			if (component2 == null || component2.productInfoArray == null)
-			{
-				continue;
-			}
-			int[] productInfoArray = component2.productInfoArray;
-			if (result2 >= 0 && result2 + 1 < productInfoArray.Length && productInfoArray[result2] == result3)
-			{
-				int count = productInfoArray[result2 + 1];
-				int num = npc.GetMaxProductsPerRow(result, result3);
-				if (num <= 0)
-				{
-					num = 1;
-				}
-				list2.Add(new RowCandidate(result, result2, result3, count, num));
-			}
-		}
-		if (list2.Count == 0)
-		{
-			return RestockAssignments.NoTask();
-		}
-		list2.Sort((RowCandidate a, RowCandidate b) =>
-		{
-			int num8 = ((float)a.Count / (float)a.MaxPerRow).CompareTo((float)b.Count / (float)b.MaxPerRow);
-			if (num8 != 0)
-			{
-				return num8;
-			}
-			int count2 = a.Count;
-			num8 = count2.CompareTo(b.Count);
-			if (num8 != 0)
-			{
-				return num8;
-			}
-			count2 = a.ShelfIdx;
-			return count2.CompareTo(b.ShelfIdx);
-		});
-		Transform transform3 = npc.storageOBJ.transform;
-		foreach (RowCandidate item2 in list2)
-		{
-			int num2 = -1;
-			int num3 = -1;
-			int num4 = int.MaxValue;
-			for (int num5 = 0; num5 < transform3.childCount; num5++)
-			{
-				Data_Container component3 = transform3.GetChild(num5).GetComponent<Data_Container>();
-				if (component3 == null || component3.productInfoArray == null)
-				{
-					continue;
-				}
-				int[] productInfoArray2 = component3.productInfoArray;
-				for (int num6 = 0; num6 + 1 < productInfoArray2.Length; num6 += 2)
-				{
-					if (productInfoArray2[num6] != item2.ProductId)
-					{
-						continue;
-					}
-					int num7 = productInfoArray2[num6 + 1];
-					if (num7 > 0 && !reservedSources.Contains(SlotKey(num5, num6)) && num7 < num4)
-					{
-						num4 = num7;
-						num2 = num5;
-						num3 = num6;
-						if (num7 == 1)
-						{
-							break;
-						}
-					}
-				}
-			}
-			if (num2 >= 0)
-			{
-				return new int[6] { item2.ShelfIdx, item2.ShelfPair, num2, num3, item2.ProductId, item2.ProductId };
-			}
-		}
-		return RestockAssignments.NoTask();
-	}
+    private static int[] SelectTask(NPC_Manager npc, GameObject requester)
+    {
+        if (npc.shelvesOBJ == null || npc.storageOBJ == null || npc.employeeParentOBJ == null)
+            return RestockAssignments.NoTask();
+        var route = new EmployeeNavigation(requester);
+        if (!route.Ready) return RestockAssignments.NoTask();
+        RestockAssignments.Collect(npc, requester, false, out var occupied, out var reserved);
+        var rows = new List<RowCandidate>();
+        var shelves = npc.shelvesOBJ.transform;
+        // Read current rows directly: vanilla lists are partial and may be five seconds old.
+        for (int shelf = 0; shelf < shelves.childCount; shelf++)
+        {
+            if (occupied.Contains(shelf)) continue;
+            var target = shelves.GetChild(shelf).GetComponent<Data_Container>();
+            if (target == null || target.productInfoArray == null || target.standSpot == null) continue;
+            var contents = target.productInfoArray;
+            for (int pair = 0; pair + 1 < contents.Length; pair += 2)
+            {
+                int product = contents[pair], count = contents[pair + 1];
+                if (product < 0 || count < 0) continue;
+                int capacity = npc.GetMaxProductsPerRow(shelf, product);
+                if (capacity <= 0 || count >= capacity || !route.CanReach(target.standSpot.transform.position)) continue;
+                rows.Add(new RowCandidate(shelf, pair, product, count, capacity));
+            }
+        }
+        rows.Sort((a, b) =>
+        {
+            int ratio = ((float)a.Count / a.MaxPerRow).CompareTo((float)b.Count / b.MaxPerRow);
+            if (ratio != 0) return ratio;
+            int count = a.Count.CompareTo(b.Count);
+            return count != 0 ? count : a.ShelfIdx.CompareTo(b.ShelfIdx);
+        });
+        var warehouse = npc.storageOBJ.transform;
+        foreach (var row in rows)
+        {
+            int sourceShelf = -1, sourcePair = -1, smallestBox = int.MaxValue;
+            var destination = shelves.GetChild(row.ShelfIdx).GetComponent<Data_Container>().standSpot.transform.position;
+            for (int shelf = 0; shelf < warehouse.childCount; shelf++)
+            {
+                var source = warehouse.GetChild(shelf).GetComponent<Data_Container>();
+                if (source == null || source.productInfoArray == null || source.standSpot == null) continue;
+                var contents = source.productInfoArray;
+                for (int pair = 0; pair + 1 < contents.Length; pair += 2)
+                {
+                    int count = contents[pair + 1];
+                    if (contents[pair] != row.ProductId || count <= 0 || count >= smallestBox ||
+                        reserved.Contains(SlotKey(shelf, pair))) continue;
+                    if (!route.CanTravel(source.standSpot.transform.position, destination)) continue;
+                    sourceShelf = shelf;
+                    sourcePair = pair;
+                    smallestBox = count;
+                }
+            }
+            if (sourceShelf < 0) continue;
+            return new[] { row.ShelfIdx, row.ShelfPair, sourceShelf, sourcePair, row.ProductId, row.ProductId };
+        }
+        return RestockAssignments.NoTask();
+    }
 
 	internal static void AddTasks(List<string> source, List<string> target)
 	{

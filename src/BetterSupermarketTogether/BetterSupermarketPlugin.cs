@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.5")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.6")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,11 +19,13 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.5";
+	public const string PluginVersion = "1.2.6";
 
 	internal static ManualLogSource Log;
 
 	internal static BetterSupermarketPlugin Instance;
+
+    internal static bool ProductionTrayEnabled => EnablePlugin && Instance != null && Instance._productionAutoTray != null && Instance._productionAutoTray.Value;
 
 	internal static string PendingNotification;
 
@@ -412,7 +414,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.5", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.6", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -423,7 +425,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.5 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.6 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -611,7 +613,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         {
             if (product < 0 || product >= listing.productsData.Length || listing.productsData[product] == null) continue;
             var counts = stock.Get(product);
-            if (counts.OnHand > 0 || counts.Pending > 0) _seenProducts.Add(product);
+            if (counts.Listed || counts.OnHand > 0 || counts.Pending > 0) _seenProducts.Add(product);
             if (RestockSkipReason(product, counts, listing, orderMode, _idleEmployeeExists, true) == null)
                 orders.Add(product);
         }
@@ -639,7 +641,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
             if (advanceConfirmation) _zeroStreak.Remove(product);
             return "shelf above threshold / 貨架存量高於門檻";
         }
-        if (_onlySeenProducts.Value && !_seenProducts.Contains(product) && stock.OnHand == 0)
+        if (_onlySeenProducts.Value && !_seenProducts.Contains(product) && !stock.Listed && stock.OnHand == 0)
             return "not seen today / 當天尚未出現";
         _zeroStreak.TryGetValue(product, out int confirmations);
         if (advanceConfirmation) _zeroStreak[product] = ++confirmations;
@@ -675,6 +677,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
                 _ordering ? "purchase in progress / 正在下單" :
                 RestockSkipReason(product, stock, listing, mode, idle, false) ?? "ready for next scan / 下次掃描可下單";
             string name = LocalizationManager.instance != null ? LocalizationManager.instance.GetLocalizationString("product" + product) : "";
+            if (reason == "ready for next scan / 下次掃描可下單" && blackboard.shoppingListParent != null && blackboard.shoppingListParent.transform.childCount > 0)
+                reason = "shopping cart occupied / 等待既有購物車處理完成";
             _lastOrderOutcome.TryGetValue(product, out string lastOrder);
             Log.LogInfo($"  RESTOCK #{product} {name}: shelf={stock.Shelf} warehouse={stock.Warehouse} ground={stock.Ground} held={stock.Held} tray={stock.Tray} pending={stock.Pending} reserve={stock.Reserve} min={MinStockFor(product, listing)} reason={reason} lastOrder={lastOrder ?? "none"}");
         }
@@ -886,7 +890,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 						{
 							text = text.Substring(0, 80);
 						}
-						Log.LogInfo($"  NPC[{i}] NPCID={component.NPCID} name=\"{component.NetworkNPCName}\" prio={component.taskPriority} state={component.state} carrying={component.boxNumberOfProducts} data={text}");
+						Log.LogInfo($"  NPC[{i}] NPCID={component.NPCID} name=\"{component.NetworkNPCName}\" prio={component.taskPriority} state={component.state} carrying={component.boxNumberOfProducts} {EmployeeWorkGuard.Describe(component)} data={text}");
 					}
 				}
 				Log.LogInfo($"hiredEmployeesData entries: {instance.hiredEmployeesData.Length}");
@@ -956,7 +960,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.5 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.6 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -1112,8 +1116,15 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private IEnumerator OrderRoutine(GameData gd, ManagerBlackboard mb, ProductListing pl, List<int> ids, int orderMode)
 	{
+        var cartItems = new List<GameObject>();
+        bool accepted = false;
 		try
 		{
+            if (mb.shoppingListParent == null || mb.shoppingListParent.transform.childCount > 0)
+            {
+                SetOrderOutcome(ids, "shopping cart occupied / 等待既有購物車處理完成");
+                yield break;
+            }
 			Dictionary<int, float> dictionary = new Dictionary<int, float>();
 			float total = 0f;
 			foreach (int id in ids)
@@ -1142,7 +1153,10 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			{
 				for (int i = 0; i < Mathf.Max(1, _boxesPerProduct.Value); i++)
 				{
+                    int previous = mb.shoppingListParent.transform.childCount;
 					mb.AddShoppingListProduct(id2, dictionary[id2]);
+                    if (mb.shoppingListParent.transform.childCount > previous)
+                        cartItems.Add(mb.shoppingListParent.transform.GetChild(previous).gameObject);
 				}
 				if (summary.Length > 0)
 				{
@@ -1163,6 +1177,15 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			}
 			yield return new WaitForEndOfFrame();
 			yield return new WaitForEndOfFrame();
+            bool intact = cartItems.Count == ids.Count * Mathf.Max(1, _boxesPerProduct.Value) &&
+                mb.shoppingListParent.transform.childCount == cartItems.Count;
+            foreach (var item in cartItems)
+                if (item == null || item.transform.parent != mb.shoppingListParent.transform) intact = false;
+            if (!intact || Mathf.Abs(mb.shoppingTotalCharge - total) > 0.05f)
+            {
+                SetOrderOutcome(ids, "shopping cart changed / 購物車已變更，取消本次自動採購");
+                yield break;
+            }
             if (mb.shoppingTotalCharge <= 0f)
             {
                 SetOrderOutcome(ids, "cart not ready / 購物車金額尚未準備完成");
@@ -1186,6 +1209,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
                 Log.LogWarning("Auto-order rejected by BuyCargo; order limits unchanged.");
                 yield break;
             }
+            accepted = true;
             SetOrderOutcome(ids, $"ordered / 已下單 day={gd.gameDay} time={gd.timeOfDay:0.00}");
 			Dictionary<int, int> dictionary2 = ((orderMode == 1) ? _ordersThisNight : _ordersThisDaytime);
 			Dictionary<int, float> dictionary3 = ((orderMode == 1) ? _cooldownUntilNight : _cooldownUntilDaytime);
@@ -1214,7 +1238,15 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		}
 		finally
 		{
-			_ordering = false;
+            _ordering = false;
+            if (!accepted && mb != null && mb.shoppingListParent != null && cartItems.Count > 0)
+            {
+                // Remove only entries added by this attempt; preserve anything the player added.
+                foreach (var item in cartItems)
+                    if (item != null && item.transform.parent == mb.shoppingListParent.transform) UnityEngine.Object.Destroy(item);
+                if (AccessTools.Method(typeof(ManagerBlackboard), "CalculateShoppingListTotal")?.Invoke(mb, null) is IEnumerator recalculate)
+                    mb.StartCoroutine(recalculate);
+            }
 		}
 	}
 

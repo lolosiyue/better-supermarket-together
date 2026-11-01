@@ -48,8 +48,9 @@ internal static class WarehouseConsolidator
 					{
 						int num6 = productInfoArray[j * 2];
 						int num7 = productInfoArray[j * 2 + 1];
+						if (j >= component.combinableInfoArray.Length) continue;
 						string text = component.combinableInfoArray[j];
-						bool flag2 = transform2 == null || transform2.GetChild(j).childCount <= 0;
+						bool flag2 = transform2 != null && j < transform2.childCount && transform2.GetChild(j).childCount <= 0;
 						if (num6 == boxIDProduct && text == combinableData)
 						{
 							if (num7 > 0)
@@ -66,7 +67,7 @@ internal static class WarehouseConsolidator
 							flag = true;
 						}
 					}
-					if ((num5 != 0 || HasLabeledEmptyRow(productInfoArray, transform2, num4, boxIDProduct, combinableData)) && flag)
+					if ((num5 != 0 || HasLabeledEmptyRow(component, transform2, num4, boxIDProduct, combinableData)) && flag)
 					{
 						float num8 = Vector3.Distance(__instance.storageDistanceReferencePoint, transform.GetChild(i).position);
 						if (num5 < num2 || (num5 == num2 && num8 < num3))
@@ -95,15 +96,16 @@ internal static class WarehouseConsolidator
 			}
 		}
 
-		private static bool HasLabeledEmptyRow(int[] info, Transform boxContainer, int pairs, int productId, string combinableData)
+		private static bool HasLabeledEmptyRow(ManufacturingContainer container, Transform boxContainer, int pairs, int productId, string combinableData)
 		{
+			var info = container.productInfoArray;
 			if (boxContainer == null)
 			{
 				return false;
 			}
-			for (int i = 0; i < pairs; i++)
+			for (int i = 0; i < pairs && i < boxContainer.childCount && i < container.combinableInfoArray.Length; i++)
 			{
-				if (info[i * 2] == productId && info[i * 2 + 1] <= 0 && boxContainer.GetChild(i).childCount <= 0)
+				if (info[i * 2] == productId && RepairPolicies.NormalizeRecipe(container.combinableInfoArray[i]) == RepairPolicies.NormalizeRecipe(combinableData) && info[i * 2 + 1] <= 0 && boxContainer.GetChild(i).childCount <= 0)
 				{
 					return true;
 				}
@@ -134,7 +136,7 @@ internal static class WarehouseConsolidator
 			{
 				continue;
 			}
-			if (component.taskPriority == 2)
+			if (component.taskPriority == 2 && component.state == 2 && RestockAssignments.Resolve(npc, component, false, true))
 			{
 				int[] productAvailableArray = component.productAvailableArray;
 				if (productAvailableArray != null && productAvailableArray.Length >= 6 && productAvailableArray[0] != -1 && productAvailableArray[2] != -1)
@@ -142,10 +144,18 @@ internal static class WarehouseConsolidator
 					hashSet.Add(SmarterRestockerTaskPatch.SlotKey(productAvailableArray[2], productAvailableArray[3]));
 				}
 			}
-			if (component.taskPriority == 3 && component.currentFreeStorageIndex >= 0)
+			if ((component.taskPriority == 3 && (component.state == 3 || component.state == 20) ||
+                component.taskPriority == 2 && (component.state == 7 || component.state == 20)) &&
+                component.currentFreeStorageOBJ != null && component.currentFreeStorageOBJ.transform.parent == transform)
 			{
-				hashSet2.Add(component.currentFreeStorageIndex);
+				hashSet2.Add(component.currentFreeStorageOBJ.transform.GetSiblingIndex());
 			}
+            if (component.taskPriority == 7 && component.thiefProductsNumber == 0 && component.state == 4)
+            {
+                var source = component.orderProductLocationInfoArray;
+                if (source != null && source.Length >= 3 && source[0] == 0 && source[1] >= 0 && source[2] >= 0)
+                    hashSet.Add(SmarterRestockerTaskPatch.SlotKey(source[1], source[2]));
+            }
 		}
 		Dictionary<int, List<int[]>> dictionary = new Dictionary<int, List<int[]>>();
 		Data_Container[] array = new Data_Container[childCount];

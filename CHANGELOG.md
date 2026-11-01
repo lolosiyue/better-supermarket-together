@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.6 — 2026-11-01
+
+- Audit ordinary purchasing, ordinary box storage/restocking, production ingredient collection, and manufactured box storage/restocking as distinct flows.
+- Select tasks from live shelves instead of partial/stale native lists; exclude full rows and require complete pickup-to-shelf routes.
+- Preserve physical container references across index changes, validate labels/recipes before placement, and recover from removed targets or stalled paths while retaining carried goods.
+- Release stale ground-box claims, check routes for both box types, and recognize compatible merge space when storage is full.
+- Select reachable storage and ingredient sources; walk to a newly selected return rack before depositing.
+- Keep every required ingredient group during employee collection, retry reachable alternatives, use existing tray ingredients, and return collected ingredients when a job is cancelled.
+- Apply production commands on the host synchronously and acknowledge accepted tray additions even when the final ingredient is consumed immediately.
+- Avoid employee/automatic feeding races and stale workbench ownership; include carried finished boxes and active production in duplicate-queue prevention.
+- Preserve labeled warehouse rows when their last ingredient/box is removed and avoid active ingredient-pickup slots during consolidation.
+- Recognize empty labeled ordinary rows for purchasing; preserve manual shopping carts and clean up rejected automatic entries.
+- Extend F11 employee navigation diagnostics and both READMEs.
+
 ## 1.2.5 — 2026-11-01
 
 - Separate ordinary purchasing inventory from manufactured-product IDs, including carried boxes; count actual tray ingredients instead of finished goods.

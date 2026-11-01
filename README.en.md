@@ -26,6 +26,20 @@ A **BepInEx 5** quality-of-life mod for **Supermarket Together**, combining rest
 | Traditional Chinese text corrections | Includes an override table for selected in-game translations, applied when the game language is Chinese. |
 | In-game controls and status | Manager-board plugin button, F10 settings, F8 status overlay, F9 report, and F11 diagnostic logging. |
 
+## Separate ordinary and manufacturing workflows
+
+| Flow | Behavior |
+| --- | --- |
+| Ordinary goods | Purchase → ordinary delivery boxes → storage employees → ordinary warehouse → restock employees → ordinary sales shelves. Matches ordinary product IDs. |
+| Production ingredients | Uses ordinary inventory, but retains every required recipe group and retries reachable alternatives when ingredients are missing. Employee collection and automatic tray feeding claim workbenches separately. |
+| Manufactured goods | Matches manufactured product ID plus the full recipe. Workbench → finished box → manufacturing employees → manufacturing storage/sales shelves. Carried finished goods and active production batches suppress duplicate production. |
+
+With `Restock.SmartRestock` enabled, employees read live shelf data and require complete NavMesh paths for pickup, shelf replenishment, and storage. Tasks are revalidated after shelves move, disappear, or change recipes. Invalid paths and prolonged lack of movement trigger recovery and temporary avoidance. Cancelling an employee's uncommitted ingredient-collection job returns collected ingredients as ordinary boxes. Completely obstructed areas still require moving the obstruction in the store.
+
+Automatic purchasing waits for an existing shopping cart to be cleared. Rejected orders or concurrent player edits remove only entries added by that automatic attempt. F11 includes each employee's workflow, path status, remaining distance, wait target, and per-product purchasing skip reasons. Empty labeled rows count as products used by the store.
+
+See the [restocking and navigation audit](docs/RESTOCK-NAVIGATION-AUDIT-2026-11-01.md) for the reviewed flows and validation limits.
+
 ## Installation
 
 Requirements: the Windows version of Supermarket Together and **BepInEx 5 x64** installed in the game directory. The local build uses BepInEx 5.4.23.2 and game assemblies from Unity 2023.2.22f1. Other versions have not been fully validated.
@@ -113,13 +127,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.5.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.6.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
-- Version 1.2.5 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.6 passed compilation and metadata checks of the new Harmony targets. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 

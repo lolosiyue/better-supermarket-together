@@ -345,7 +345,7 @@ internal static class SettingsPanelUI
 			staffText.text = staffLabel();
 		});
 		LabelBindings.Add((staffText, staffLabel));
-		NewText(_page2.transform, "分類最低庫存（倉庫+箱子+生產部 總量低於此值自動購買）", 16, new Vector2(0f, 292f), new Vector2(900f, 30f), TextAnchor.MiddleCenter);
+		NewText(_page2.transform, "分類最低備用庫存（倉庫＋普通箱子＋托盤原料，不含銷售貨架）", 16, new Vector2(0f, 292f), new Vector2(900f, 30f), TextAnchor.MiddleCenter);
 		List<(string, Func<float>, Action<float>, float)> list3 = new List<(string, Func<float>, Action<float>, float)>();
 		BetterSupermarketPlugin.Instance.CollectGroupMinStockSettings(list3);
 		num = 0;

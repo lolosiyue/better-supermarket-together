@@ -9,6 +9,12 @@ internal static class RestockAssignments
 {
     private sealed class WaitTarget { internal int State; }
     private static readonly ConditionalWeakTable<NPC_Info, WaitTarget> WaitTargets = new();
+    private sealed class TaskTarget
+    {
+        internal GameObject Shelf, Source;
+        internal bool Manufacturing;
+    }
+    private static readonly ConditionalWeakTable<NPC_Info, TaskTarget> Targets = new();
 
     internal static int[] NoTask() => new[] { -1, -1, -1, -1, -1, -1 };
 
@@ -22,7 +28,15 @@ internal static class RestockAssignments
         employee != null && employee.state == -1 && employee.playingCoroutine &&
         WaitTargets.TryGetValue(employee, out var wait) && wait.State == targetState;
 
-    private static bool IsRestocking(NPC_Info employee, bool manufacturing)
+    internal static bool TryGetWaitTarget(NPC_Info employee, out int state)
+    {
+        state = 0;
+        if (!WaitTargets.TryGetValue(employee, out var target)) return false;
+        state = target.State;
+        return true;
+    }
+
+    internal static bool IsRestocking(NPC_Info employee, bool manufacturing)
     {
         if (employee == null || !employee.isEmployee ||
             employee.taskPriority != (manufacturing ? 7 : 2) ||
@@ -35,6 +49,49 @@ internal static class RestockAssignments
         return IsWaitingFor(employee, placing);
     }
 
+    internal static void RememberTask(NPC_Manager manager, GameObject requester, bool manufacturing, int[] task)
+    {
+        var employee = requester != null ? requester.GetComponent<NPC_Info>() : null;
+        if (employee == null) return;
+        Targets.Remove(employee);
+        if (task == null || task.Length < 6 || task[0] < 0 || task[2] < 0) return;
+        var shelves = manufacturing ? manager.manufacturingShelvesOBJ : manager.shelvesOBJ;
+        var storage = manufacturing ? manager.manufacturingStorageShelvesOBJ : manager.storageOBJ;
+        if (shelves == null || storage == null || task[0] >= shelves.transform.childCount || task[2] >= storage.transform.childCount) return;
+        Targets.Add(employee, new TaskTarget
+        {
+            Shelf = shelves.transform.GetChild(task[0]).gameObject,
+            Source = storage.transform.GetChild(task[2]).gameObject,
+            Manufacturing = manufacturing
+        });
+    }
+
+    internal static bool Resolve(NPC_Manager manager, NPC_Info employee, bool manufacturing, bool requireSource)
+    {
+        var task = employee.productAvailableArray;
+        if (task == null || task.Length < 6 || task[0] < 0) return false;
+        if (!Targets.TryGetValue(employee, out var target))
+        {
+            RememberTask(manager, employee.gameObject, manufacturing, task);
+            if (!Targets.TryGetValue(employee, out target)) return false;
+        }
+        var shelves = manufacturing ? manager.manufacturingShelvesOBJ : manager.shelvesOBJ;
+        var storage = manufacturing ? manager.manufacturingStorageShelvesOBJ : manager.storageOBJ;
+        if (target.Manufacturing != manufacturing || shelves == null || target.Shelf == null ||
+            target.Shelf.transform.parent != shelves.transform) return false;
+        task[0] = target.Shelf.transform.GetSiblingIndex();
+        if (!requireSource) return true;
+        if (storage == null || target.Source == null || target.Source.transform.parent != storage.transform) return false;
+        task[2] = target.Source.transform.GetSiblingIndex();
+        return true;
+    }
+
+    internal static void ForgetTask(NPC_Info employee)
+    {
+        Targets.Remove(employee);
+        employee.productAvailableArray = NoTask();
+    }
+
     internal static void Collect(NPC_Manager manager, GameObject requester, bool manufacturing,
         out HashSet<int> shelves, out HashSet<long> sources)
     {
@@ -45,6 +102,7 @@ internal static class RestockAssignments
         {
             var employee = child.GetComponent<NPC_Info>();
             if (employee == null || employee.gameObject == requester || !IsRestocking(employee, manufacturing)) continue;
+            if (!Resolve(manager, employee, manufacturing, employee.state == (manufacturing ? 42 : 2))) continue;
             var task = employee.productAvailableArray;
             if (task == null || task.Length < 6 || task[0] < 0) continue;
             shelves.Add(task[0]);
@@ -60,6 +118,7 @@ internal static class RestockAssignments
         Collect(manager, requester, manufacturing, out var shelves, out var sources);
         if (shelves.Contains(task[0]) || sources.Contains(SmarterRestockerTaskPatch.SlotKey(task[2], task[3])))
             task = NoTask();
+        RememberTask(manager, requester, manufacturing, task);
     }
 
     internal static bool Retarget(NPC_Manager manager, NPC_Info employee, int productId, int currentShelf,
@@ -69,6 +128,8 @@ internal static class RestockAssignments
         if (root == null || employee == null || employee.productAvailableArray == null || employee.productAvailableArray.Length < 2)
             return false;
         Collect(manager, employee.gameObject, manufacturing, out var occupied, out _);
+        var route = new EmployeeNavigation(employee.gameObject);
+        recipe = RepairPolicies.NormalizeRecipe(recipe);
         int selectedShelf = -1, selectedRow = -1;
         float selectedRatio = float.MaxValue;
         bool selectedCurrent = false;
@@ -80,21 +141,21 @@ internal static class RestockAssignments
             if (manufacturing)
             {
                 var container = root.transform.GetChild(shelf).GetComponent<ManufacturingContainer>();
-                if (container == null) continue;
+                if (container == null || container.standSpot == null || !route.CanReach(container.standSpot.transform.position)) continue;
                 contents = container.productInfoArray;
                 recipes = container.combinableInfoArray;
             }
             else
             {
                 var container = root.transform.GetChild(shelf).GetComponent<Data_Container>();
-                if (container == null) continue;
+                if (container == null || container.standSpot == null || !route.CanReach(container.standSpot.transform.position)) continue;
                 contents = container.productInfoArray;
             }
             if (contents == null) continue;
             for (int row = 0; row + 1 < contents.Length; row += 2)
             {
                 if (contents[row] != productId || contents[row + 1] < 0) continue;
-                if (manufacturing && (recipes == null || row / 2 >= recipes.Length || recipes[row / 2] != recipe)) continue;
+                if (manufacturing && (recipe == null || recipes == null || row / 2 >= recipes.Length || RepairPolicies.NormalizeRecipe(recipes[row / 2]) != recipe)) continue;
                 int capacity = manufacturing ? manager.GetMaxManufacturingProductsPerRow(shelf, productId) : manager.GetMaxProductsPerRow(shelf, productId);
                 if (capacity <= 0 || contents[row + 1] >= capacity) continue;
                 float ratio = (float)contents[row + 1] / capacity;
@@ -111,6 +172,8 @@ internal static class RestockAssignments
         if (selectedShelf < 0) return false;
         employee.productAvailableArray[0] = selectedShelf;
         employee.productAvailableArray[1] = selectedRow;
+        var target = Targets.GetValue(employee, _ => new TaskTarget { Manufacturing = manufacturing });
+        target.Shelf = root.transform.GetChild(selectedShelf).gameObject;
         return true;
     }
 }

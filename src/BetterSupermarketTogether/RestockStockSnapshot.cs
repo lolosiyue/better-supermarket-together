@@ -11,6 +11,7 @@ internal sealed class RestockStockSnapshot
     internal sealed class Stock
     {
         internal int Shelf, Warehouse, Ground, Held, Tray, Pending;
+        internal bool Listed;
         internal int Reserve => Warehouse + Ground + Held + Tray + Pending;
         internal int OnHand => Shelf + Warehouse + Ground + Held + Tray;
     }
@@ -92,8 +93,10 @@ internal sealed class RestockStockSnapshot
             if (contents == null) continue;
             for (int row = 0; row + 1 < contents.Length; row += 2)
             {
-                if (contents[row] < 0 || contents[row + 1] <= 0) continue;
+                if (contents[row] < 0) continue;
                 var stock = Get(contents[row]);
+                stock.Listed = true; // An empty labeled row still identifies a product the store uses.
+                if (contents[row + 1] <= 0) continue;
                 if (warehouse) stock.Warehouse += contents[row + 1];
                 else stock.Shelf += contents[row + 1];
             }

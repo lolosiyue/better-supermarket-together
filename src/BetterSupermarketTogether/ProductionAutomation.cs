@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
+using Mirror;
 
 namespace BetterSupermarketTogether;
 
@@ -33,8 +34,6 @@ internal static class ProductionAutomation
     internal static bool OnlyShelfRecipes = true;
 
 	private static MethodInfo _cmdQueue;
-
-	private static MethodInfo _cmdTray;
 
 	private static bool _variantsLoaded;
 
@@ -126,16 +125,9 @@ internal static class ProductionAutomation
 		}
 		if (_cmdQueue == null)
 		{
-			_cmdQueue = AccessTools.Method(typeof(ManufacturingProduction), "CmdAddToProductionQueue");
+			_cmdQueue = AccessTools.Method(typeof(ManufacturingProduction), "UserCode_CmdAddToProductionQueue__Int32__String");
 		}
-		if (_cmdTray == null)
-		{
-			_cmdTray = AccessTools.Method(typeof(ManufacturingProduction), "CmdAddItemToTable");
-		}
-		if (_cmdQueue == null || _cmdTray == null)
-		{
-			return;
-		}
+        if (_cmdQueue == null) return;
 		LoadPersistedVariants();
 		if (npc.manufacturingBoxesOBJ != null)
 		{
@@ -195,6 +187,22 @@ internal static class ProductionAutomation
 				}
 			}
 		}
+        // Carried finished boxes retain their exact recipe and belong only to production stock.
+        if (npc.employeeParentOBJ != null)
+            foreach (Transform child in npc.employeeParentOBJ.transform)
+            {
+                var employee = child.GetComponent<NPC_Info>();
+                if (employee != null && employee.equippedItem == 4 && employee.boxNumberOfProducts > 0)
+                    AddVariantStock(dictionary, employee.boxProductID, employee.mBoxCombinableData, employee.boxNumberOfProducts);
+            }
+        var network = NetworkManager.singleton as CustomNetworkManager;
+        if (network != null)
+            foreach (var player in network.GamePlayers)
+            {
+                var held = player != null ? player.GetComponent<PlayerNetwork>() : null;
+                if (held != null && held.equippedItem == 16 && held.extraParameter2 > 0)
+                    AddVariantStock(dictionary, held.extraParameter1, held.extraParameter3, held.extraParameter2);
+            }
 		SaveDiscovered();
 		Status = OnlyShelfRecipes
             ? $"貨架配方 {shelfRecipes.Count}，門檻 {QueueThreshold}"
@@ -214,11 +222,15 @@ internal static class ProductionAutomation
 				continue;
 			}
 			string text = key2.Substring(num2 + 1);
-            if (instance.unlockedBaseProducts == null || result >= instance.unlockedBaseProducts.Length || !instance.unlockedBaseProducts[result]) continue;
+            if (result < 0 || instance.unlockedBaseProducts == null || result >= instance.unlockedBaseProducts.Length || !instance.unlockedBaseProducts[result] ||
+                result >= instance.productsData.Length || instance.productsData[result] == null ||
+                instance.productsData[result].needsDistilling && !instance.hasDistilleryAddon) continue;
 			bool flag = false;
 			array2 = array;
 			foreach (ManufacturingProduction manufacturingProduction2 in array2)
 			{
+                if (ProductionLifecycle.HasInFlight(manufacturingProduction2, result, text))
+                { flag = true; break; }
 				if (manufacturingProduction2.productQueue == null || manufacturingProduction2.combinableQueue == null)
 				{
 					continue;
@@ -268,9 +280,9 @@ internal static class ProductionAutomation
 			}
 			if (!(manufacturingProduction3 == null))
 			{
-				int previousQueue = manufacturingProduction3.productQueue.Count;
+                // The host implementation validates the ID and applies the queue synchronously.
+                // A ready job can start and leave the queue during this call, so queue length is not an acknowledgement.
                 _cmdQueue.Invoke(manufacturingProduction3, new object[2] { result, text });
-                if (manufacturingProduction3.productQueue.Count <= previousQueue) continue;
                 num++;
 				BetterSupermarketPlugin.Log.LogInfo($"Auto-production: queued '{ManufacturingName(result)}' recipe={text}, target={(OnlyShelfRecipes ? "sales-shelf" : "history")} (stock {num3} <= {QueueThreshold}).");
 			}
@@ -284,7 +296,6 @@ internal static class ProductionAutomation
 			return;
 		}
 		Dictionary<int, int> dictionary2 = new Dictionary<int, int>();
-		Dictionary<int, int[]> dictionary3 = new Dictionary<int, int[]>();
 		Transform transform3 = npc.storageOBJ.transform;
 		for (int num5 = 0; num5 < transform3.childCount; num5++)
 		{
@@ -301,10 +312,6 @@ internal static class ProductionAutomation
 				if (num7 >= 0 && num8 > 0)
 				{
 					dictionary2[num7] = MfgI(dictionary2, num7) + num8;
-					if (!dictionary3.ContainsKey(num7))
-					{
-						dictionary3[num7] = new int[3] { num5, num6, num8 };
-					}
 				}
 			}
 		}
@@ -316,6 +323,8 @@ internal static class ProductionAutomation
 			{
 				break;
 			}
+            if (!manufacturingProduction5.isServer || manufacturingProduction5.assignedToEmployee ||
+                ProductionLifecycle.ReadyOrProducing(manufacturingProduction5)) continue;
 			if (manufacturingProduction5.productQueue == null || manufacturingProduction5.productQueue.Count == 0 || manufacturingProduction5.itemsInTray == null || manufacturingProduction5.combinableQueue == null || manufacturingProduction5.combinableQueue.Count == 0)
 			{
 				continue;
@@ -332,7 +341,7 @@ internal static class ProductionAutomation
             string[] array3 = text2.Split(new char[1] { '|' });
 			foreach (string text3 in array3)
 			{
-				if (num9 >= maxTray)
+				if (num9 >= maxTray || ProductionLifecycle.ReadyOrProducing(manufacturingProduction5))
 				{
 					break;
 				}
@@ -389,15 +398,10 @@ internal static class ProductionAutomation
 				int num16 = component5.productInfoArray[num15 + 1];
 				if (num16 > 0)
 				{
-					int count = manufacturingProduction5.itemsInTray.Count;
-					_cmdTray.Invoke(manufacturingProduction5, new object[2] { num12, null });
-					if (manufacturingProduction5.itemsInTray.Count <= count || !manufacturingProduction5.itemsInTray.Contains(num12))
-					{
-						break;
-					}
+                    if (!ProductionLifecycle.TryFeed(manufacturingProduction5, num12)) break;
 					if (num16 == 1)
 					{
-						component5.EmployeeUpdateArrayValuesStorage(num15, -1, -1);
+						component5.EmployeeUpdateArrayValuesStorage(num15, component5.transform.Find("CanvasSigns") != null ? num12 : -1, -1);
 					}
 					else
 					{
@@ -406,7 +410,7 @@ internal static class ProductionAutomation
 					dictionary2[num12] = Math.Max(0, MfgI(dictionary2, num12) - 1);
 					array5[2] = num16 - 1;
 					num9++;
-					BetterSupermarketPlugin.Log.LogInfo("Auto-production: fed tray with '" + ManufacturingName(num12) + "' (from storage).");
+					BetterSupermarketPlugin.Log.LogInfo("Auto-production: fed tray with '" + OrdinaryName(num12) + "' (from storage).");
 				}
 			}
 		}
@@ -438,6 +442,19 @@ internal static class ProductionAutomation
 			}
 		}
 	}
+
+    private static void AddVariantStock(Dictionary<string, int> stock, int product, string recipe, int count)
+    {
+        recipe = RepairPolicies.NormalizeRecipe(recipe);
+        if (product < 0 || recipe == null || count <= 0) return;
+        string key = product + "|" + recipe;
+        stock[key] = MfgS(stock, key) + count;
+    }
+
+    private static string OrdinaryName(int product)
+    {
+        return LocalizationManager.instance != null ? LocalizationManager.instance.GetLocalizationString("product" + product) : "#" + product;
+    }
 
 	private static int MfgS(Dictionary<string, int> dict, string key)
 	{

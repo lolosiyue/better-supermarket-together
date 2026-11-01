@@ -15,6 +15,9 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'assets\BetterSupermarketTogethe
 foreach ($name in @('README.md', 'README.en.md', 'CHANGELOG.md', 'LICENSE')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $stageDir
 }
+$docsDir = Join-Path $stageDir 'docs'
+New-Item -ItemType Directory -Path $docsDir -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'docs') -File | Copy-Item -Destination $docsDir
 $archivePath = Join-Path $artifactDir "BetterSupermarketTogether-$version.zip"
 $archiveItems = @(
     (Join-Path $stageDir 'BepInEx'),
@@ -22,6 +25,7 @@ $archiveItems = @(
     (Join-Path $stageDir 'README.en.md'),
     (Join-Path $stageDir 'CHANGELOG.md'),
     (Join-Path $stageDir 'LICENSE')
+    (Join-Path $stageDir 'docs')
 )
 Compress-Archive -LiteralPath $archiveItems -DestinationPath $archivePath -Force
 Write-Output "Package: $archivePath"
