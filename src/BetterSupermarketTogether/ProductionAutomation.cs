@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
-using Mirror;
 
 namespace BetterSupermarketTogether;
 
@@ -18,6 +17,7 @@ internal static class ProductionAutomation
         KnownVariants.Clear();
         _variantsLoaded = false;
         _ingredientPids = null;
+        _queueFailure = null;
         Status = "等待生產部載入";
     }
 
@@ -34,6 +34,15 @@ internal static class ProductionAutomation
     internal static bool OnlyShelfRecipes = true;
 
 	private static MethodInfo _cmdQueue;
+    private static MethodInfo _cmdDeskQueue;
+    private static string _queueFailure;
+
+    private sealed class Target
+    {
+        internal string Key, Recipe;
+        internal int Product;
+        internal ProductionStockSnapshot.Stock Stock;
+    }
 
 	private static bool _variantsLoaded;
 
@@ -124,11 +133,6 @@ internal static class ProductionAutomation
 			Status = "沒有可用的生產工作台";
 			return;
 		}
-		if (_cmdQueue == null)
-		{
-			_cmdQueue = AccessTools.Method(typeof(ManufacturingProduction), "UserCode_CmdAddToProductionQueue__Int32__String");
-		}
-        if (_cmdQueue == null) return;
 		LoadPersistedVariants();
 		if (npc.manufacturingBoxesOBJ != null)
 		{
@@ -171,127 +175,34 @@ internal static class ProductionAutomation
 				}
 			}
 		}
-		Dictionary<string, int> dictionary = new Dictionary<string, int>();
-		var shelfRecipes = new HashSet<string>();
-		AccumulateVariantStock(npc.manufacturingStorageShelvesOBJ.transform, dictionary);
-		AccumulateVariantStock(npc.manufacturingShelvesOBJ.transform, dictionary, shelfRecipes);
-		if (npc.manufacturingBoxesOBJ != null)
-		{
-			Transform transform2 = npc.manufacturingBoxesOBJ.transform;
-			for (int m = 0; m < transform2.childCount; m++)
-			{
-				ManufacturingBoxData component3 = transform2.GetChild(m).GetComponent<ManufacturingBoxData>();
-				if (!(component3 == null))
-				{
-					string key = component3.manufacturedProductIndex + "|" + RepairPolicies.NormalizeRecipe(component3.combinablesData);
-					dictionary[key] = MfgS(dictionary, key) + component3.numberOfProducts;
-				}
-			}
-		}
-        // Carried finished boxes retain their exact recipe and belong only to production stock.
-        if (npc.employeeParentOBJ != null)
-            foreach (Transform child in npc.employeeParentOBJ.transform)
+        var stock = ProductionStockSnapshot.Capture(npc);
+        foreach (var entry in stock.Products)
+        {
+            int split = entry.Key.IndexOf('|');
+            if (int.TryParse(entry.Key.Substring(0, split), out int product)) Learn(product, entry.Key.Substring(split + 1));
+        }
+        SaveDiscovered();
+        var targets = Targets(stock);
+        _queueFailure = null;
+        int queued = 0, shortage = 0, pending = 0;
+        foreach (var target in targets)
+        {
+            if (target.Stock.Reserve <= QueueThreshold) shortage++;
+            string reason = SkipReason(instance, npc, array, target);
+            if (reason != null)
             {
-                var employee = child.GetComponent<NPC_Info>();
-                if (employee != null && employee.equippedItem == 4 && employee.boxNumberOfProducts > 0)
-                    AddVariantStock(dictionary, employee.boxProductID, employee.mBoxCombinableData, employee.boxNumberOfProducts);
+                if (reason.StartsWith("pending:")) pending++;
+                continue;
             }
-        var network = NetworkManager.singleton as CustomNetworkManager;
-        if (network != null)
-            foreach (var player in network.GamePlayers)
-            {
-                var held = player != null ? player.GetComponent<PlayerNetwork>() : null;
-                if (held != null && held.equippedItem == 16 && held.extraParameter2 > 0)
-                    AddVariantStock(dictionary, held.extraParameter1, held.extraParameter3, held.extraParameter2);
-            }
-		SaveDiscovered();
-		Status = OnlyShelfRecipes
-            ? $"貨架配方 {shelfRecipes.Count}，門檻 {QueueThreshold}"
-            : $"已知配方 {KnownVariants.Count}，門檻 {QueueThreshold}";
-		int num = 0;
-		foreach (KeyValuePair<string, string> knownVariant in KnownVariants)
-		{
-			if (num >= maxQueue)
-			{
-				break;
-			}
-			string key2 = knownVariant.Key;
-            if (OnlyShelfRecipes && !shelfRecipes.Contains(key2)) continue;
-			int num2 = key2.IndexOf('|');
-			if (num2 <= 0 || !int.TryParse(key2.Substring(0, num2), out var result))
-			{
-				continue;
-			}
-			string text = key2.Substring(num2 + 1);
-            if (result < 0 || instance.unlockedBaseProducts == null || result >= instance.unlockedBaseProducts.Length || !instance.unlockedBaseProducts[result] ||
-                result >= instance.productsData.Length || instance.productsData[result] == null ||
-                instance.productsData[result].needsDistilling && !instance.hasDistilleryAddon) continue;
-			bool flag = false;
-			array2 = array;
-			foreach (ManufacturingProduction manufacturingProduction2 in array2)
-			{
-                if (ProductionLifecycle.HasInFlight(manufacturingProduction2, result, text))
-                { flag = true; break; }
-				if (manufacturingProduction2.productQueue == null || manufacturingProduction2.combinableQueue == null)
-				{
-					continue;
-				}
-				for (int n = 0; n < manufacturingProduction2.productQueue.Count && n < manufacturingProduction2.combinableQueue.Count; n++)
-				{
-					if (manufacturingProduction2.productQueue[n] == result && RepairPolicies.NormalizeRecipe(manufacturingProduction2.combinableQueue[n]) == text)
-					{
-						flag = true;
-						break;
-					}
-				}
-				if (flag)
-				{
-					break;
-				}
-			}
-			if (flag)
-			{
-				continue;
-			}
-			bool waitingAtDesk = false;
-            if (npc.manufacturingDesksList != null)
-                foreach (var deskObject in npc.manufacturingDesksList)
-                {
-                    var desk = deskObject?.GetComponent<ManufacturingDesk>();
-                    if (desk?.toSendProductsQueue == null || desk.toSendCombinableQueue == null) continue;
-                    for (int j = 0; j < desk.toSendProductsQueue.Count && j < desk.toSendCombinableQueue.Count; j++)
-                        if (desk.toSendProductsQueue[j] == result && RepairPolicies.NormalizeRecipe(desk.toSendCombinableQueue[j]) == text) waitingAtDesk = true;
-                }
-            if (waitingAtDesk) continue;
-            int num3 = MfgS(dictionary, key2);
-			if (num3 > QueueThreshold)
-			{
-				continue;
-			}
-			ManufacturingProduction manufacturingProduction3 = null;
-			int num4 = int.MaxValue;
-			array2 = array;
-			foreach (ManufacturingProduction manufacturingProduction4 in array2)
-			{
-				if (manufacturingProduction4.productQueue != null && manufacturingProduction4.productQueue.Count < num4)
-				{
-					num4 = manufacturingProduction4.productQueue.Count;
-					manufacturingProduction3 = manufacturingProduction4;
-				}
-			}
-			if (!(manufacturingProduction3 == null))
-			{
-                // The host implementation validates the ID and applies the queue synchronously.
-                // A ready job can start and leave the queue during this call, so queue length is not an acknowledgement.
-                _cmdQueue.Invoke(manufacturingProduction3, new object[2] { result, text });
-                num++;
-				BetterSupermarketPlugin.Log.LogInfo($"Auto-production: queued '{ManufacturingName(result)}' recipe={text}, target={(OnlyShelfRecipes ? "sales-shelf" : "history")} (stock {num3} <= {QueueThreshold}).");
-			}
-		}
-		if ((num > 0) & notify)
-		{
-			BetterSupermarketPlugin.PendingNotification = "`Better Supermarket: queued " + num + " product(s)";
-		}
+            if (queued >= maxQueue) continue;
+            if (!Queue(npc, array, target.Product, target.Recipe, out string destination)) continue;
+            queued++;
+            BetterSupermarketPlugin.Log.LogInfo($"Auto-production: queued '{ManufacturingName(target.Product)}' recipe={target.Recipe}, target={(OnlyShelfRecipes ? "sales-shelf" : "history")} reserve={target.Stock.Reserve} (warehouse={target.Stock.Warehouse}, ground={target.Stock.Ground}, held={target.Stock.Held}; shelf={target.Stock.Shelf} excluded), threshold={QueueThreshold}, destination={destination}.");
+        }
+        Status = $"目標 {targets.Count} 配方｜備貨不足 {shortage}｜待製作 {pending + queued}｜本輪新增 {queued}";
+        if (queued == 0 && _queueFailure != null) Status += "｜" + _queueFailure;
+        if (queued > 0 && notify)
+            BetterSupermarketPlugin.PendingNotification = "`Better Supermarket: queued " + queued + " recipe(s)";
 		if (maxTray <= 0)
 		{
 			return;
@@ -417,54 +328,148 @@ internal static class ProductionAutomation
 		}
 	}
 
-	private static void AccumulateVariantStock(Transform containers, Dictionary<string, int> stock, HashSet<string> shelfRecipes = null)
-	{
-		for (int i = 0; i < containers.childCount; i++)
-		{
-			ManufacturingContainer component = containers.GetChild(i).GetComponent<ManufacturingContainer>();
-			if (component == null || component.productInfoArray == null || component.combinableInfoArray == null)
-			{
-				continue;
-			}
-			int[] productInfoArray = component.productInfoArray;
-			string[] combinableInfoArray = component.combinableInfoArray;
-			for (int j = 0; j + 1 < productInfoArray.Length; j += 2)
-			{
-				int num = productInfoArray[j];
-				int num2 = productInfoArray[j + 1];
-				if (num >= 0 && num2 >= 0)
-				{
-					string text = ((j / 2 < combinableInfoArray.Length) ? combinableInfoArray[j / 2] : "");
-					Learn(num, text);
-					string key = num + "|" + RepairPolicies.NormalizeRecipe(text);
-					shelfRecipes?.Add(key);
-					stock[key] = MfgS(stock, key) + num2;
-				}
-			}
-		}
-	}
-
-    private static void AddVariantStock(Dictionary<string, int> stock, int product, string recipe, int count)
+    private static List<Target> Targets(ProductionStockSnapshot snapshot)
     {
-        recipe = RepairPolicies.NormalizeRecipe(recipe);
-        if (product < 0 || recipe == null || count <= 0) return;
-        string key = product + "|" + recipe;
-        stock[key] = MfgS(stock, key) + count;
+        var keys = new HashSet<string>(KnownVariants.Keys, StringComparer.Ordinal);
+        foreach (var entry in snapshot.Products) keys.Add(entry.Key);
+        var targets = new List<Target>();
+        foreach (string key in keys)
+        {
+            int split = key.IndexOf('|');
+            if (split <= 0 || !int.TryParse(key.Substring(0, split), out int product) || product < 0) continue;
+            string recipe = RepairPolicies.NormalizeRecipe(key.Substring(split + 1));
+            if (recipe == null) continue;
+            string normalized = ProductionStockSnapshot.Key(product, recipe);
+            var stock = snapshot.Get(normalized);
+            if (OnlyShelfRecipes && !stock.OnSalesShelf) continue;
+            targets.Add(new Target { Key = normalized, Product = product, Recipe = recipe, Stock = stock });
+        }
+        targets.Sort((a, b) =>
+        {
+            int reserve = a.Stock.Reserve.CompareTo(b.Stock.Reserve);
+            if (reserve != 0) return reserve;
+            int shelf = a.Stock.Shelf.CompareTo(b.Stock.Shelf);
+            if (shelf != 0) return shelf;
+            return StringComparer.Ordinal.Compare(a.Key, b.Key);
+        });
+        return targets;
+    }
+
+    private static bool Contains(List<int> products, List<string> recipes, int product, string recipe)
+    {
+        if (products == null || recipes == null) return false;
+        for (int i = 0; i < products.Count && i < recipes.Count; i++)
+            if (products[i] == product && RepairPolicies.NormalizeRecipe(recipes[i]) == recipe) return true;
+        return false;
+    }
+
+    private static string SkipReason(ManufacturingBase manufacturing, NPC_Manager manager, ManufacturingProduction[] tables, Target target)
+    {
+        if (!BetterSupermarketPlugin.ProductionQueueEnabled) return "auto queue disabled / 自動排程已關閉";
+        int product = target.Product;
+        if (manufacturing.unlockedBaseProducts == null || product >= manufacturing.unlockedBaseProducts.Length ||
+            !manufacturing.unlockedBaseProducts[product] || product >= manufacturing.productsData.Length || manufacturing.productsData[product] == null)
+            return "recipe locked or unavailable / 配方未解鎖或資料未載入";
+        if (manufacturing.productsData[product].needsDistilling && !manufacturing.hasDistilleryAddon)
+            return "distillery locked / 尚未解鎖蒸餾";
+        foreach (var table in tables)
+        {
+            if (table == null || !table.isServer) continue;
+            if (ProductionLifecycle.HasInFlight(table, product, target.Recipe)) return "pending: producing / 正在製作";
+            if (Contains(table.productQueue, table.combinableQueue, product, target.Recipe)) return "pending: workbench / 工作台已排程";
+        }
+        if (manager.manufacturingDesksList != null)
+            foreach (var obj in manager.manufacturingDesksList)
+            {
+                var desk = obj != null ? obj.GetComponent<ManufacturingDesk>() : null;
+                if (desk != null && desk.isServer && Contains(desk.toSendProductsQueue, desk.toSendCombinableQueue, product, target.Recipe))
+                    return "pending: management desk / 中央看板已排程";
+            }
+        return target.Stock.Reserve > QueueThreshold ? "reserve sufficient / 備用成品足夠" : null;
+    }
+
+    private static bool Queue(NPC_Manager manager, ManufacturingProduction[] tables, int product, string recipe, out string destination)
+    {
+        destination = null;
+        ManufacturingDesk selected = null;
+        if (manager.manufacturingDesksList != null)
+            foreach (var obj in manager.manufacturingDesksList)
+            {
+                var desk = obj != null ? obj.GetComponent<ManufacturingDesk>() : null;
+                if (desk == null || !desk.isServer || desk.toSendProductsQueue == null || desk.toSendCombinableQueue == null ||
+                    desk.toSendProductsQueue.Count != desk.toSendCombinableQueue.Count) continue;
+                if (selected == null || desk.toSendProductsQueue.Count < selected.toSendProductsQueue.Count) selected = desk;
+            }
+        if (selected != null)
+        {
+            if (_cmdDeskQueue == null) _cmdDeskQueue = AccessTools.Method(typeof(ManufacturingDesk), "UserCode_CmdAddToQueue__Int32__String");
+            if (_cmdDeskQueue == null) return QueueFailure("中央看板排程方法不可用");
+            int before = selected.toSendProductsQueue.Count;
+            _cmdDeskQueue.Invoke(selected, new object[] { product, recipe });
+            if (selected.toSendProductsQueue.Count <= before) return QueueFailure("中央看板未接受排程");
+            destination = "management-desk:" + selected.name;
+            return true;
+        }
+        // Stores without a management desk retain direct workbench scheduling.
+        ManufacturingProduction bench = null;
+        foreach (var table in tables)
+        {
+            if (table == null || !table.isServer || table.productQueue == null || table.combinableQueue == null ||
+                table.productQueue.Count != table.combinableQueue.Count || table.productQueue.Count > 2) continue;
+            if (bench == null || table.productQueue.Count < bench.productQueue.Count) bench = table;
+        }
+        if (bench == null) return QueueFailure("等待可用工作台");
+        if (!TryQueueWorkbench(bench, product, recipe)) return QueueFailure("工作台未接受排程");
+        destination = "workbench:" + bench.name;
+        return true;
+    }
+
+    private static bool QueueFailure(string reason)
+    {
+        _queueFailure = reason;
+        if (!Warned) { Warned = true; BetterSupermarketPlugin.Log.LogWarning("Auto-production: " + reason); }
+        return false;
+    }
+
+    internal static bool TryQueueWorkbench(ManufacturingProduction table, int product, string recipe)
+    {
+        if (!BetterSupermarketPlugin.EnablePlugin || table == null || !table.isServer || product < 0 ||
+            ManufacturingBase.Instance == null || product >= ManufacturingBase.Instance.productsData.Length) return false;
+        if (_cmdQueue == null) _cmdQueue = AccessTools.Method(typeof(ManufacturingProduction), "UserCode_CmdAddToProductionQueue__Int32__String");
+        if (_cmdQueue == null) return false;
+        string prepared = ProductionLifecycle.PreparedRecipe(table);
+        _cmdQueue.Invoke(table, new object[] { product, recipe });
+        ProductionLifecycle.PreservePreparedRecipe(table, prepared);
+        return true;
+    }
+
+    internal static void DumpDiagnostics(NPC_Manager manager)
+    {
+        if (!BetterSupermarketPlugin.IsHost || manager == null || ManufacturingBase.Instance == null) return;
+        LoadPersistedVariants();
+        var tables = UnityEngine.Object.FindObjectsByType<ManufacturingProduction>(FindObjectsSortMode.None);
+        var snapshot = ProductionStockSnapshot.Capture(manager);
+        var targets = Targets(snapshot);
+        BetterSupermarketPlugin.Log.LogInfo($"PRODUCTION targets={targets.Count} known={KnownVariants.Count} threshold={QueueThreshold} enabled={BetterSupermarketPlugin.ProductionQueueEnabled} onlyShelfRecipes={OnlyShelfRecipes} tables={tables.Length}; reserve=warehouse+ground+held, sales shelves excluded; lastQueueFailure={_queueFailure ?? "none"}");
+        foreach (var target in targets)
+        {
+            var stock = target.Stock;
+            string reason = tables.Length == 0 ? "no workbench / 沒有工作台" : SkipReason(ManufacturingBase.Instance, manager, tables, target) ?? "ready for next scan / 下次掃描可排程";
+            BetterSupermarketPlugin.Log.LogInfo($"  PRODUCTION #{target.Product} {ManufacturingName(target.Product)} recipe={target.Recipe} shelf={stock.Shelf} warehouse={stock.Warehouse} ground={stock.Ground} held={stock.Held} reserve={stock.Reserve} threshold={QueueThreshold} reason={reason}");
+        }
+        foreach (var table in tables)
+        {
+            BetterSupermarketPlugin.Log.LogInfo($"  PRODUCTION TABLE {table.name} queued={table.productQueue?.Count ?? 0} assigned={table.assignedToEmployee} readyOrProducing={ProductionLifecycle.ReadyOrProducing(table)} autoTrayClaim={ProductionLifecycle.AutoClaimed(table)}");
+            if (table.productQueue == null || table.combinableQueue == null) continue;
+            for (int i = 0; i < table.productQueue.Count && i < table.combinableQueue.Count; i++)
+                BetterSupermarketPlugin.Log.LogInfo($"    job={i} product={table.productQueue[i]} recipe={table.combinableQueue[i]}");
+        }
     }
 
     private static string OrdinaryName(int product)
     {
         return LocalizationManager.instance != null ? LocalizationManager.instance.GetLocalizationString("product" + product) : "#" + product;
     }
-
-	private static int MfgS(Dictionary<string, int> dict, string key)
-	{
-		if (!dict.TryGetValue(key, out var value))
-		{
-			return 0;
-		}
-		return value;
-	}
 
 	private static int MfgI(Dictionary<int, int> dict, int key)
 	{
@@ -498,4 +503,16 @@ internal static class ProductionAutomation
 		}
 		return "#" + productId;
 	}
+}
+
+// The native management desk calls a network Command from its server dispatch loop.
+// Complete the handoff synchronously so the job never disappears between the two queues.
+[HarmonyPatch(typeof(ManufacturingProduction), "AddItemFromManufacturingDesk")]
+internal static class SynchronousProductionDeskHandoffPatch
+{
+    private static bool Prefix(ManufacturingProduction __instance, int __0, string __1)
+    {
+        if (!BetterSupermarketPlugin.EnablePlugin || !__instance.isServer) return true;
+        return !ProductionAutomation.TryQueueWorkbench(__instance, __0, __1);
+    }
 }

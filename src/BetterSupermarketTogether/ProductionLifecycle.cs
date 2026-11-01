@@ -40,6 +40,14 @@ internal static class ProductionLifecycle
     internal static bool ReadyOrProducing(ManufacturingProduction table) =>
         IngredientsReady?.GetValue(table) is true || Producing?.GetValue(table) is true;
 
+    internal static string PreparedRecipe(ManufacturingProduction table) => IngredientsReady?.GetValue(table) is true ? Head(table) : null;
+
+    internal static void PreservePreparedRecipe(ManufacturingProduction table, string recipe)
+    {
+        if (BetterSupermarketPlugin.IsHost && table.isServer && recipe != null && recipe == Head(table))
+            IngredientsReady?.SetValue(table, true);
+    }
+
     internal static bool AutoClaimed(ManufacturingProduction table)
     {
         if (!Tables.TryGetValue(table, out var state)) return false;

@@ -17,7 +17,7 @@ This mod is **host-only**, including single-player hosting. Other players do not
 | Smarter restocking | Assigns one restocking employee per whole shelf for both ordinary and manufactured products, covering pickup, travel, placement pauses, and retargeting leftover goods. Completion/cancellation releases the shelf; employees wait when no unclaimed task is available. Preserves low-stock shelf priority and selection of smaller remaining boxes. |
 | Grouped warehouse placement | Employees prefer shelves already holding the same product, reducing scattered storage. |
 | Nightly warehouse consolidation | Moves matching products toward their main storage shelf after closing. Defaults to 23:00 with a maximum of 30 box moves per night. |
-| Automatic production queues | By default, replenishes only recipes assigned to sales shelves, including sold-out shelves retaining their labels. Stock is counted separately for each custom variant. Historical recipes and leftover boxes alone do not create production targets. |
+| Automatic production queues | Compares reserve stock in manufacturing storage and ground/held finished boxes; sales-shelf stock is excluded. Queues through the central production desk for native workbench assignment, with direct workbench fallback when no desk exists. By default, replenishes only recipes assigned to sales shelves, including sold-out shelves retaining their labels. Stock is counted separately for each custom variant. Historical recipes and leftover boxes alone do not create production targets. |
 | Automatic ingredient feeding | Transfers required base and optional ingredients from ordinary warehouse storage onto production trays. Production itself uses the game's employees and workbenches. |
 | Automatic pricing | Requires **MART OS 2.0**. Until unlocked, the toggle is locked and enabled configuration values cannot change prices. Updates unlocked products at a scheduled time using current purchase costs, and reevaluates after product unlocks. The default selling price is 200% of cost, with configurable percentage and rounding. |
 | Automatic promotions | Selects an eligible stocked product each day. Can estimate slow-moving stock from inventory and recent sales, falling back to inventory ranking when sales data is unavailable. Default discount: 15%. |
@@ -80,6 +80,8 @@ Press F11 and search the log for `RESTOCK #productID` or the product name. Each 
 
 Order limits and cooldowns still apply. The idle gate uses the employee's current action and wait target, avoiding stale data left by completed tasks. Restart the game after replacing the DLL; F9 shows the loaded version.
 
+For example, cookies with 36 units on sales shelves and zero warehouse/ground/held units have **0 reserve stock**. A threshold of 30 triggers production unless that recipe is already pending. The desk's right pane shows jobs awaiting workbench assignment; jobs leave that pane after dispatch. F11 `PRODUCTION` diagnostics separate stock sources and explain each skipped recipe. See the [1.2.9 production fix](docs/PRODUCTION-QUEUE-FIX-2026-11-01.md) for its cause and validation scope.
+
 ## Configuration
 
 For compatibility with the previous mod name, the configuration file remains:
@@ -111,7 +113,7 @@ Use `RandomNameStyle = Chinese` with `MaleChineseNames`, `FemaleChineseNames`, a
 | `Restock.MinTotalStockDefault` | `0` | Baseline minimum stock for ordinary products. |
 | `Restock.MinTotalStockProduction` | `100` | Ingredient restock threshold. Adjust the last item on F10 page 2 (生產原料最低庫存) in steps of 10. The higher of this and the product category threshold applies. |
 | `Restock.GroupMinStock` | `4:100,5:100` | Category thresholds; 4 is hygiene and 5 is cleaning supplies. |
-| `Production.AutoQueueThreshold` | `0` | Queue production when production-area stock is at or below this value. |
+| `Production.AutoQueueThreshold` | `0` | Queue one batch when same-recipe reserve stock (warehouse + ground/held finished boxes, excluding sales shelves) is at or below this value; pending recipes are not queued again. |
 | `Production.OnlyShelfRecipes` | `true` | Replenish recipes assigned to sales shelves; `false` restores all historical recipes as targets. |
 | `Pricing.Percentage` | `200` | Selling price as a percentage of current cost. |
 | `Promo.Discount` | `15` | Promotion discount percentage. |
@@ -129,13 +131,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.8.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.9.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - Only the host can use this mod. Native server authority is required and cannot be disabled through configuration. Leaving a room clears mod UI and pending session state.
-- Version 1.2.8 passed compilation. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.9 passed compilation. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 

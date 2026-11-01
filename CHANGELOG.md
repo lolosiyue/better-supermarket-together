@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.9 — 2026-11-01
+
+- Trigger automatic production from same-recipe reserve stock (manufacturing warehouse plus ground/held finished boxes), excluding sales-shelf quantities.
+- Keep sales-shelf labels as production targets, including empty labeled shelves, and prioritize recipes with the lowest reserve/shelf quantities.
+- Submit jobs through the native central manufacturing desk so pending work appears in its queue; retain direct-workbench fallback for stores without a desk.
+- Dispatch desk jobs into workbenches synchronously on the host, preserving already prepared ingredients when appending later jobs.
+- Prevent duplicate recipes across the central queue, workbench queues and active production.
+- Add per-recipe stock components and skip reasons to F11, plus an in-game production summary with target, shortage, pending and newly queued counts.
+
 ## 1.2.8 — 2026-11-01
 
 - Enforce native host authority for the entire mod; the legacy `OnlyHost` value can no longer enable client-side operation.

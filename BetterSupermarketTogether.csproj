@@ -4,9 +4,9 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>BetterSupermarketTogether</AssemblyName>
     <RootNamespace>BetterSupermarketTogether</RootNamespace>
-    <Version>1.2.8</Version>
-    <AssemblyVersion>1.2.8.0</AssemblyVersion>
-    <FileVersion>1.2.8.0</FileVersion>
+    <Version>1.2.9</Version>
+    <AssemblyVersion>1.2.9.0</AssemblyVersion>
+    <FileVersion>1.2.9.0</FileVersion>
     <Product>Better Supermarket Together</Product>
     <Description>Quality-of-life automation and employee customization for Supermarket Together.</Description>
     <GameDir Condition="'$(GameDir)' == ''">$(SUPERMARKET_TOGETHER_DIR)</GameDir>

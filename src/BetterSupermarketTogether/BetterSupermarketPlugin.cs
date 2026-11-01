@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.8")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.9")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,13 +19,14 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.8";
+	public const string PluginVersion = "1.2.9";
 
 	internal static ManualLogSource Log;
 
 	internal static BetterSupermarketPlugin Instance;
 
     internal static bool ProductionTrayEnabled => EnablePlugin && Instance != null && Instance._productionAutoTray != null && Instance._productionAutoTray.Value;
+    internal static bool ProductionQueueEnabled => EnablePlugin && Instance != null && Instance._productionAutoQueue != null && Instance._productionAutoQueue.Value;
 
     // NetworkServer.active is the native authority signal, including early save loading.
     internal static bool IsHost => Mirror.NetworkServer.active;
@@ -389,7 +390,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		ProductionAutomation.LoadVariants = LoadLearnedVariants;
 		ProductionAutomation.PersistVariants = SaveLearnedVariants;
 		_productionAutoTray = Config.Bind("Production", "AutoFillTray", defaultValue: true, "自動從一般倉庫補入目前生產配方所需的基礎及客製原料。");
-		_productionQueueThreshold = Config.Bind("Production", "AutoQueueThreshold", 0, new ConfigDescription("成品自動生產門檻：生產部側存貨（架子+工作台+地面箱）≤ 此值時自動排程生產一批（0 = 生產部清空才排）", new AcceptableValueRange<int>(0, 10000)));
+		_productionQueueThreshold = Config.Bind("Production", "AutoQueueThreshold", 0, new ConfigDescription("成品最低備貨：成品倉庫＋地上／手持成品箱（不含銷售貨架）≤ 此值時補產；同配方已排程或製作中不重排", new AcceptableValueRange<int>(0, 10000)));
 		_cleanerPatrolEnabled = Config.Bind("Cleaner", "PatrolWhenIdle", defaultValue: true, "沒垃圾時機器人在店內巡邏，並每 0.33 秒動態搶最近的垃圾（原版會走回服務台待機）");
 		_cleanerPatrolRadius = Config.Bind("Cleaner", "PatrolRadius", 12f, new ConfigDescription("巡邏半徑（公尺，以服務台為中心）", new AcceptableValueRange<float>(3f, 40f)));
 		_gateOnIdleEmployee = Config.Bind("Restock", "GateOnIdleEmployee", defaultValue: true, "自動補貨前先看有沒有空閒的倉儲/補貨員工：沒有就先不下單（取代固定的下單冷卻）。");
@@ -428,7 +429,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.8", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.9", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -447,7 +448,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.8 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.9 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!_extraSlotsApplied)
@@ -939,47 +940,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 					Log.LogInfo($"  data[{j}] name=\"{arg}\" len={text2.Length}");
 				}
 			}
-			ProductionAutomation.LoadPersistedVariants();
-			Log.LogInfo($"KnownVariants: {ProductionAutomation.KnownVariants.Count} | threshold={ProductionAutomation.QueueThreshold}");
-			if (ManufacturingBase.Instance != null && instance.manufacturingStorageShelvesOBJ != null)
-			{
-				Dictionary<string, int> dictionary = new Dictionary<string, int>();
-				Transform[] array2 = new Transform[2]
-				{
-					instance.manufacturingStorageShelvesOBJ.transform,
-					instance.manufacturingShelvesOBJ.transform
-				};
-				foreach (Transform transform2 in array2)
-				{
-					for (int l = 0; l < transform2.childCount; l++)
-					{
-						ManufacturingContainer component2 = transform2.GetChild(l).GetComponent<ManufacturingContainer>();
-						if (component2 == null || component2.productInfoArray == null || component2.combinableInfoArray == null)
-						{
-							continue;
-						}
-						for (int m = 0; m + 1 < component2.productInfoArray.Length; m += 2)
-						{
-							int num = component2.productInfoArray[m];
-							int num2 = component2.productInfoArray[m + 1];
-							if (num >= 0 && num2 > 0)
-							{
-								string text3 = ((m / 2 < component2.combinableInfoArray.Length) ? component2.combinableInfoArray[m / 2] : "");
-								string key = num + "|" + text3;
-								dictionary[key] = (dictionary.TryGetValue(key, out var value) ? (value + num2) : num2);
-							}
-						}
-					}
-				}
-				foreach (KeyValuePair<string, int> item in dictionary)
-				{
-					Log.LogInfo($"  PROD STOCK {item.Key} = {item.Value}");
-				}
-				if (dictionary.Count == 0)
-				{
-					Log.LogInfo("  PROD STOCK: (production area empty)");
-				}
-			}
+            ProductionAutomation.DumpDiagnostics(instance);
             DumpRestockDiagnostics(gd);
 			Log.LogInfo("==== AR2230 DIAGNOSTICS END ====");
 		}
@@ -992,7 +953,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.8 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.9 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -1139,7 +1100,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			_checkIntervalSeconds.Value = v;
 		}, 5f));
-		list.Add(("生產：排程門檻（生產部存貨）", () => _productionQueueThreshold.Value, (float v) =>
+		list.Add(("生產：最低備貨（不含銷售貨架）", () => _productionQueueThreshold.Value, (float v) =>
 		{
 			_productionQueueThreshold.Value = Mathf.RoundToInt(v);
 		}, 10f));
