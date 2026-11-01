@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.10 — 2026-11-01
+
+- Expand Chinese/English male, female and neutral name pools into thousands of given-name/surname combinations per group.
+- Recognize unmodified legacy defaults automatically without expanding the configuration file; prioritize custom names and use the matching built-in pool after custom names run out.
+- Exclude saved and currently displayed full names case-insensitively, including the employee being rerolled, and prefer unused given names.
+- Never fall back to an already-used full name when a small pool is exhausted; retain the 25-character limit and the existing NPC-gender/style selection.
+- Preserve all existing employee names until individual or bulk randomization is requested.
+
 ## 1.2.9 — 2026-11-01
 
 - Trigger automatic production from same-recipe reserve stock (manufacturing warehouse plus ground/held finished boxes), excluding sales-shelf quantities.

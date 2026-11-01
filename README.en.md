@@ -102,6 +102,15 @@ FemaleEnglishNames = Emma Wilson,Olivia Bennett,Sophia Turner
 NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 ```
 
+Unmodified legacy pools (20 male/female names and 10 neutral names per language) automatically use the expanded built-in combinations. Thousands of combinations are generated in memory rather than written into the configuration file. Custom lists remain the first choice; once exhausted, the same language/gender built-in pool supplies unused names. Both saved and currently displayed employee names are checked during individual and bulk renaming.
+
+| Built-in combinations | Male | Female | Neutral |
+| --- | ---: | ---: | ---: |
+| Chinese | 9,693 | 9,615 | 7,201 |
+| English | 16,522 | 19,461 | 12,040 |
+
+Updating preserves existing employee names. After restarting, use **F10 → 員工改名 → 全部隨機改名** to replace existing duplicates in one batch.
+
 Use `RandomNameStyle = Chinese` with `MaleChineseNames`, `FemaleChineseNames`, and `NeutralChineseNames` for Chinese names. A new installation defaults to Chinese. Legacy mixed lists (`RandomNames` and `EnglishRandomNames`) are retained as data but no longer select random names; move custom entries into the appropriate male/female/neutral lists. Updating does not rename existing employees. Use individual or bulk randomization to replace previously assigned names.
 
 | Setting | Fresh-install default | Purpose |
@@ -131,13 +140,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.9.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.10.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - Only the host can use this mod. Native server authority is required and cannot be disabled through configuration. Leaving a room clears mod UI and pending session state.
-- Version 1.2.9 passed compilation. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.10 passed compilation and 28-person uniqueness checks for all six name pools. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 

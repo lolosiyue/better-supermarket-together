@@ -148,28 +148,31 @@ internal static class EmployeeRandomNamePatch
 		}
 	}
 
-	internal static string PickRandomName(NPC_Manager npc, int exceptIndex)
-	{
-		EmployeeGender gender = EmployeeNameCatalog.Resolve(npc, exceptIndex);
-		string[] randomNamePool = BetterSupermarketPlugin.GetRandomNamePool(gender);
-		HashSet<string> hashSet = new HashSet<string>();
-		for (int i = 0; i < npc.hiredEmployeesData.Length; i++)
-		{
-			if (i != exceptIndex && !string.IsNullOrWhiteSpace(npc.hiredEmployeesData[i]))
-			{
-				string[] array = npc.hiredEmployeesData[i].Split(new char[1] { '|' });
-				if (array.Length > 9)
-				{
-					hashSet.Add(array[9]);
-				}
-			}
-		}
-        var unusedNames = new List<string>();
-        foreach (string name in randomNamePool)
-            if (!hashSet.Contains(name)) unusedNames.Add(name);
-        if (unusedNames.Count > 0) return unusedNames[Rng.Next(unusedNames.Count)];
-        return randomNamePool[Rng.Next(randomNamePool.Length)];
-	}
+    internal static string PickRandomName(NPC_Manager npc, int exceptIndex)
+    {
+        EmployeeGender gender = EmployeeNameCatalog.Resolve(npc, exceptIndex);
+        bool english = BetterSupermarketPlugin.UsesEnglishRandomNames;
+        var preferred = BetterSupermarketPlugin.GetRandomNamePool(gender);
+        var expanded = EmployeeNameCatalog.ExpandedNames(gender, english);
+        var existing = new List<string>();
+        if (npc != null && npc.hiredEmployeesData != null)
+        {
+            for (int i = 0; i < npc.hiredEmployeesData.Length; i++)
+            {
+                string record = npc.hiredEmployeesData[i];
+                if (!string.IsNullOrWhiteSpace(record))
+                {
+                    string[] data = record.Split('|');
+                    if (data.Length > 9) existing.Add(data[9]);
+                }
+                // Include current display names too; native rename Commands complete asynchronously.
+                if (npc.employeesArray == null || i >= npc.employeesArray.Length || npc.employeesArray[i] == null) continue;
+                var employee = npc.employeesArray[i].GetComponent<NPC_Info>();
+                if (employee != null) existing.Add(employee.NetworkNPCName);
+            }
+        }
+        return EmployeeNamePicker.Pick(preferred, expanded, existing, english, Rng);
+    }
 
 	private static void RefreshRowName(Transform parent, int index, string name)
 	{
