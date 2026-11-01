@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.3 — 2026-11-01
+
+- Add the production-ingredient minimum-stock control to the end of settings page 2, bound directly to `Restock.MinTotalStockProduction` in steps of 10.
+- Explain that ingredient and category thresholds use the higher value.
+
 ## 1.2.2 — 2026-11-01
 
 - Match both Chinese and English random employee names to the NPC model's male/female metadata.

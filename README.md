@@ -85,7 +85,7 @@ NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 | `Safety.CheckIntervalSeconds` | `10` | 存貨掃描間隔，單位為現實秒。 |
 | `Restock.GateOnIdleEmployee` | `true` | 等待空閒倉儲／補貨員工。 |
 | `Restock.MinTotalStockDefault` | `0` | 一般商品的最低庫存基準。 |
-| `Restock.MinTotalStockProduction` | `100` | 生產原料的補貨門檻。 |
+| `Restock.MinTotalStockProduction` | `100` | 生產原料的補貨門檻；F10 → 第 2 頁最後一項「生產原料最低庫存」，每次 ±10。與商品分類門檻取較高值。 |
 | `Restock.GroupMinStock` | `4:100,5:100` | 分類門檻；4 為衛生用品，5 為清潔用品。 |
 | `Production.AutoQueueThreshold` | `0` | 生產部成品存量 ≤ 此值時補上生產排程。 |
 | `Production.OnlyShelfRecipes` | `true` | 只補銷售貨架指定的配方；`false` 則沿用所有歷史配方。 |
@@ -105,14 +105,15 @@ NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.2.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
+`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.3.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
 
 ## 使用範圍與目前狀態
 
 - 自動採購會花費遊戲資金；可自行調整門檻與資金保留額。生產仍需要配方、原料、工作台及生產員工。
 - 多人遊戲建議由主機安裝並保留 `OnlyHost = true`。員工改名與名額購買由主機操作。
-- 本次 1.2.2 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
+- 本次 1.2.3 完成編譯確認，沒有重新執行完整對局或 GUI 驗收。更新不會刪除舊批次的成品，也不會自動取消既有或手動生產排程。
 - 英文 README 提供英文使用說明；目前多數插件設定介面仍使用繁體中文。
 - 回報問題時請提供遊戲版本、插件版本與相關日誌片段。
 
 本專案為非官方模組，與遊戲開發商沒有隸屬關係。程式碼採用 [MIT License](LICENSE)。版本變更見 [CHANGELOG.md](CHANGELOG.md)。
+

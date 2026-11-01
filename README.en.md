@@ -85,7 +85,7 @@ Use `RandomNameStyle = Chinese` with `MaleChineseNames`, `FemaleChineseNames`, a
 | `Safety.CheckIntervalSeconds` | `10` | Stock-scan interval in real seconds. |
 | `Restock.GateOnIdleEmployee` | `true` | Wait for an idle storage/restocking employee. |
 | `Restock.MinTotalStockDefault` | `0` | Baseline minimum stock for ordinary products. |
-| `Restock.MinTotalStockProduction` | `100` | Restock threshold for production ingredients. |
+| `Restock.MinTotalStockProduction` | `100` | Ingredient restock threshold. Adjust the last item on F10 page 2 (生產原料最低庫存) in steps of 10. The higher of this and the product category threshold applies. |
 | `Restock.GroupMinStock` | `4:100,5:100` | Category thresholds; 4 is hygiene and 5 is cleaning supplies. |
 | `Production.AutoQueueThreshold` | `0` | Queue production when production-area stock is at or below this value. |
 | `Production.OnlyShelfRecipes` | `true` | Replenish recipes assigned to sales shelves; `false` restores all historical recipes as targets. |
@@ -105,14 +105,15 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.2.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.3.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
 - In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
-- Version 1.2.2 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Version 1.2.3 has a compilation check. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 
 This is an unofficial mod and is not affiliated with the game's developer. Code is available under the [MIT License](LICENSE). See [CHANGELOG.md](CHANGELOG.md) for version history.
+

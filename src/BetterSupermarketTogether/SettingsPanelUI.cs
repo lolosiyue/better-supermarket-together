@@ -370,7 +370,7 @@ internal static class SettingsPanelUI
 		{
 			ShowPage(1);
 		});
-		NewText(_page2.transform, "「生產部原料」固定使用 Restock.MinTotalStockProduction 的設定（分類頁不含此覆寫）", 12, new Vector2(0f, -296f), new Vector2(960f, 24f), TextAnchor.MiddleCenter);
+		NewText(_page2.transform, "「生產原料最低庫存」適用所有生產原料；與商品分類門檻取較高值。", 12, new Vector2(0f, -296f), new Vector2(800f, 24f), TextAnchor.MiddleCenter);
 		_page1.SetActive(value: true);
 		_page2.SetActive(value: false);
 		_page3.SetActive(value: false);

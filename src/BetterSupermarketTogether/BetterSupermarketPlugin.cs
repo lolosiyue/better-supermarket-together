@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.2")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.3")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.2";
+	public const string PluginVersion = "1.2.3";
 
 	internal static ManualLogSource Log;
 
@@ -414,7 +414,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.2", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.3", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -425,7 +425,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.2 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.3 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
 		if (!flag)
@@ -1024,7 +1024,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.2 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.3 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -1131,6 +1131,11 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 				SetGroupMinStock(group, Mathf.RoundToInt(v));
 			}, 10f));
 		}
+
+        list.Add(("生產原料最低庫存", () => _minTotalStockProduction.Value, (float v) =>
+        {
+            _minTotalStockProduction.Value = Mathf.RoundToInt(v);
+        }, 10f));
 	}
 
 	internal void CollectFloatSettings(List<(string, Func<float>, Action<float>, float)> list)
@@ -1455,5 +1460,6 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		return true;
 	}
 }
+
 
 
