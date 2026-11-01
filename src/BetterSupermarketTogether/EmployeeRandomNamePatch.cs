@@ -51,6 +51,7 @@ internal static class EmployeeRandomNamePatch
 				int dataIndex = i;
 				button.onClick.AddListener(() =>
 				{
+                    if (!BetterSupermarketPlugin.EnablePlugin) return;
 					string text = PickRandomName(npc, dataIndex);
 					EmployeeNaming.Rename(npc,dataIndex, text);
 					Transform transform4 = rowGo.transform.Find("EmployeeNameField/TextArea/Placeholder");
@@ -99,6 +100,7 @@ internal static class EmployeeRandomNamePatch
 		{
 			gameObject.AddComponent<Button>().onClick.AddListener(() =>
 			{
+                if (!BetterSupermarketPlugin.EnablePlugin) return;
 				for (int i = 0; i < npc.hiredEmployeesData.Length; i++)
 				{
 					if (!string.IsNullOrWhiteSpace(npc.hiredEmployeesData[i]))
@@ -133,6 +135,7 @@ internal static class EmployeeRandomNamePatch
 			int dataIndex = num;
 			button.onClick.AddListener(() =>
 			{
+                if (!BetterSupermarketPlugin.EnablePlugin) return;
 				string text = PickRandomName(npc, dataIndex);
 				EmployeeNaming.Rename(npc,dataIndex, text);
 				Transform transform3 = rowGo.transform.Find("EmployeeName");

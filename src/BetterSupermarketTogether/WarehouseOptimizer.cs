@@ -41,6 +41,7 @@ internal static class WarehouseOptimizer
 
 	internal static void MoveBox(Data_Container source, int sourcePair, Data_Container target, int targetRow, int productId, int count)
 	{
+        if (!BetterSupermarketPlugin.EnablePlugin || !source.isServer || !target.isServer) return;
 		source.EmployeeUpdateArrayValuesStorage(sourcePair, source.transform.Find("CanvasSigns") != null ? productId : -1, -1);
 		target.EmployeeUpdateArrayValuesStorage(targetRow * 2, productId, count);
 	}

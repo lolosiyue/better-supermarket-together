@@ -112,6 +112,7 @@ internal static class ProductionAutomation
 
 	public static void Run(NPC_Manager npc, ManagerBlackboard mb, int maxQueue, int maxTray, bool notify)
 	{
+        if (!BetterSupermarketPlugin.EnablePlugin) return;
 		ManufacturingBase instance = ManufacturingBase.Instance;
 		if (instance == null || !instance.isServer || instance.productsData == null || npc.storageOBJ == null || npc.manufacturingShelvesOBJ == null || npc.manufacturingStorageShelvesOBJ == null)
 		{

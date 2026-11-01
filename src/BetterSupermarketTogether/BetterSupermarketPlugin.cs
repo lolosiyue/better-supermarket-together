@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.7")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.8")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.7";
+	public const string PluginVersion = "1.2.8";
 
 	internal static ManualLogSource Log;
 
@@ -27,7 +27,14 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
     internal static bool ProductionTrayEnabled => EnablePlugin && Instance != null && Instance._productionAutoTray != null && Instance._productionAutoTray.Value;
 
-    internal static bool AutoPricingUnlocked => HasMartOs20(GameData.Instance);
+    // NetworkServer.active is the native authority signal, including early save loading.
+    internal static bool IsHost => Mirror.NetworkServer.active;
+
+    internal static bool AutoPricingUnlocked => IsHost && HasMartOs20(GameData.Instance);
+
+    private bool _hostSessionActive;
+    private int _hostSessionGeneration;
+    private GameData _hostGame;
 
     private static bool HasMartOs20(GameData game)
     {
@@ -39,8 +46,6 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	internal static string PendingNotification;
 
 	private static ConfigEntry<bool> _enable;
-
-	private ConfigEntry<bool> _onlyHost;
 
 	private ConfigEntry<bool> _notifications;
 
@@ -235,7 +240,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			if (_enable != null)
 			{
-				return _enable.Value;
+				return IsHost && _enable.Value;
 			}
 			return false;
 		}
@@ -339,7 +344,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		Instance = this;
 		Log = Logger;
 		_enable = Config.Bind("General", "Enable", defaultValue: true, "啟用 Better Supermarket Together (true/false)");
-		_onlyHost = Config.Bind("General", "OnlyHost", defaultValue: true, "多人模式時只在主機(host)上執行，避免多個玩家重複下單");
+		Config.Bind("General", "OnlyHost", defaultValue: true, "固定僅房主執行；此舊版設定保留相容，設為 false 也不會解除限制。").Value = true;
 		_notifications = Config.Bind("General", "Notifications", defaultValue: true, "下單時在遊戲內顯示通知");
 		_autoOpenOrderDepartment = Config.Bind("General", "AutoOpenOrderDepartment", defaultValue: true, "開業(超市開門)時自動開啟訂單部。遊戲內建的自動開啟按鈕不會存檔(每次讀檔重置)，此功能不依賴它。");
 		_orderAfterHour = Config.Bind("Timing", "OrderAfterHour", 22.5f, new ConfigDescription("幾點後開始自動補貨 (22.5 = 22:30 遊戲時間)", new AcceptableValueRange<float>(0f, 24f)));
@@ -423,32 +428,29 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.7", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.8", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
 	{
 		bool flag = GameData.Instance != null;
+        if (!flag || !IsHost)
+        {
+            ResetHostSession();
+            return;
+        }
+        if (_hostGame != GameData.Instance) ResetHostSession();
+        _hostGame = GameData.Instance;
+        _hostSessionActive = true;
 		if (flag && !_loadAnnounced)
 		{
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.7 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = "`Better Supermarket Together v1.2.8 已載入（F8 狀態列、F9 詳細狀態）";
 			}
 		}
-		if (!flag)
-		{
-			_loadAnnounced = false;
-			_renamedThisSession = false;
-			_extraSlotsApplied = false;
-			_pricingLastDay = -1;
-			_pricingLastProductCount = -1;
-			StaffCapacity.Reset();
-			ProductionAutomation.Reset();
-			SettingsPanelUI.ResetForSceneChange();
-		}
-		else if (!_extraSlotsApplied)
+		if (!_extraSlotsApplied)
 		{
 			NPC_Manager instance = NPC_Manager.Instance;
 			if (instance != null && instance.employeeParentOBJ != null && instance.isServer && instance.initialEmployeesSpawnIsFinished)
@@ -507,7 +509,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			return;
 		}
 		GameData instance3 = GameData.Instance;
-		if (instance3 == null || (_onlyHost.Value && !instance3.isServer))
+		if (instance3 == null || !IsHost || !instance3.isServer)
 		{
 			return;
 		}
@@ -603,6 +605,25 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		}
 	}
 
+    private void ResetHostSession()
+    {
+        PendingNotification = null;
+        if (!_hostSessionActive) return;
+        _hostSessionActive = false;
+        _hostGame = null;
+        _hostSessionGeneration++;
+        _loadAnnounced = _renamedThisSession = _extraSlotsApplied = _ordering = false;
+        _nightDay = _pricingLastDay = _promoLastDay = _consolidatedDay = -1;
+        _pricingLastProductCount = -1;
+        _nextScanTime = _nextProdTime = _nextUiCheck = 0f;
+        _ordersThisNight.Clear(); _ordersThisDaytime.Clear();
+        _cooldownUntilNight.Clear(); _cooldownUntilDaytime.Clear();
+        _zeroStreak.Clear(); _seenProducts.Clear(); _lastOrderOutcome.Clear();
+        StaffCapacity.Reset();
+        ProductionAutomation.Reset();
+        SettingsPanelUI.ResetForSceneChange();
+    }
+
     private int GetOrderMode(GameData gd)
     {
         if (gd.timeOfDay >= _orderAfterHour.Value && gd.timeOfDay <= _stopBeforeHour.Value) return 1;
@@ -677,14 +698,14 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         if (snapshot == null) { Log.LogInfo("RESTOCK: inventory not loaded / 存貨尚未載入"); return; }
         int mode = GetOrderMode(gd);
         bool idle = HasIdleStorageEmployee(NPC_Manager.Instance);
-        Log.LogInfo($"RESTOCK version={PluginVersion} enabled={_enable.Value} hostOnly={_onlyHost.Value} mode={mode} idle={idle} idleGate={_gateOnIdleEmployee.Value} ordering={_ordering} fundsBuffer={_fundsBuffer.Value:0.00}");
+        Log.LogInfo($"RESTOCK version={PluginVersion} enabled={_enable.Value} hostOnly=true isHost={IsHost} mode={mode} idle={idle} idleGate={_gateOnIdleEmployee.Value} ordering={_ordering} fundsBuffer={_fundsBuffer.Value:0.00}");
         Log.LogInfo("RESTOCK reserve = warehouse + ground + held ordinary boxes + tray ingredients + pending delivery; sales shelves are excluded.");
         foreach (int product in new SortedSet<int>(listing.availableProducts))
         {
             if (product < 0 || product >= listing.productsData.Length || listing.productsData[product] == null) continue;
             var stock = snapshot.Get(product);
             string reason = !_enable.Value ? "plugin disabled / 插件已關閉" :
-                _onlyHost.Value && !gd.isServer ? "host only / 僅主機執行" :
+                !IsHost || !gd.isServer ? "host only / 僅主機執行" :
                 _ordering ? "purchase in progress / 正在下單" :
                 RestockSkipReason(product, stock, listing, mode, idle, false) ?? "ready for next scan / 下次掃描可下單";
             string name = LocalizationManager.instance != null ? LocalizationManager.instance.GetLocalizationString("product" + product) : "";
@@ -971,7 +992,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	private string BuildStatusText()
 	{
 		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.7 ｜ 繁中覆蓋：" + text;
+		string text2 = "Better Supermarket Together v1.2.8 ｜ 繁中覆蓋：" + text;
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
@@ -991,7 +1012,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			text3 = "補貨：日間窗口";
 		}
 		string text4 = text3 + " ｜ 定價：" + (_pricingEnable.Value ? (AutoPricingUnlocked ? (_pricingPercentage.Value + "%") : "鎖定（需 MART OS 2.0）") : "關") + " ｜ 促銷：" + (_promoEnable.Value ? (_promoDiscount.Value + "%") : "關") + " ｜ 倉庫整理：" + (_warehouseConsolidate.Value ? "開" : "關") + " ｜ 聰明補貨：" + (SmartRestockEnabled ? "開" : "關");
-		if (_onlyHost.Value && !instance.isServer)
+		if (!IsHost || !instance.isServer)
 		{
 			text4 += " ｜ ⚠非主機（功能待機）";
 		}
@@ -1000,7 +1021,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private void OnGUI()
 	{
-		if (_showOverlay.Value && !(GameData.Instance == null))
+		if (IsHost && _showOverlay.Value && !(GameData.Instance == null))
 		{
 			if (_overlayStyle == null)
 			{
@@ -1021,7 +1042,6 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	internal void CollectBoolSettings(List<(string, ConfigEntry<bool>)> list)
 	{
 		list.Add(("總開關（全部功能）", _enable));
-		list.Add(("多人時僅主機運作", _onlyHost));
 		list.Add(("遊戲內通知", _notifications));
 		list.Add(("F8 狀態列", _showOverlay));
 		list.Add(("日間補貨模式", _daytimeEnable));
@@ -1127,10 +1147,12 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private IEnumerator OrderRoutine(GameData gd, ManagerBlackboard mb, ProductListing pl, List<int> ids, int orderMode)
 	{
+        int session = _hostSessionGeneration;
         var cartItems = new List<GameObject>();
         bool accepted = false;
 		try
 		{
+            if (!IsHost || gd != GameData.Instance || !gd.isServer) yield break;
             if (mb.shoppingListParent == null || mb.shoppingListParent.transform.childCount > 0)
             {
                 SetOrderOutcome(ids, "shopping cart occupied / 等待既有購物車處理完成");
@@ -1188,6 +1210,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			}
 			yield return new WaitForEndOfFrame();
 			yield return new WaitForEndOfFrame();
+            if (!IsHost || gd != GameData.Instance || !gd.isServer || session != _hostSessionGeneration) yield break;
             bool intact = cartItems.Count == ids.Count * Mathf.Max(1, _boxesPerProduct.Value) &&
                 mb.shoppingListParent.transform.childCount == cartItems.Count;
             foreach (var item in cartItems)
@@ -1249,8 +1272,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		}
 		finally
 		{
-            _ordering = false;
-            if (!accepted && mb != null && mb.shoppingListParent != null && cartItems.Count > 0)
+            if (session == _hostSessionGeneration) _ordering = false;
+            if (!accepted && IsHost && gd == GameData.Instance && gd.isServer && session == _hostSessionGeneration && mb != null && mb.shoppingListParent != null && cartItems.Count > 0)
             {
                 // Remove only entries added by this attempt; preserve anything the player added.
                 foreach (var item in cartItems)
@@ -1263,7 +1286,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private bool RunAutoPricing(GameData gd)
 	{
-        if (!HasMartOs20(gd)) return false;
+        if (!IsHost || !HasMartOs20(gd)) return false;
 		ProductListing instance = ProductListing.Instance;
 		if (instance == null || instance.productsData == null || instance.availableProducts == null || instance.productPlayerPricing == null)
 		{

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.8 — 2026-11-01
+
+- Enforce native host authority for the entire mod; the legacy `OnlyHost` value can no longer enable client-side operation.
+- Hide mod controls and overlays, ignore mod hotkeys, and leave localization and employee hooks inactive on joining clients.
+- Remove the optional host-only toggle while retaining its configuration key for upgrades.
+- Clear injected UI and session state when leaving/changing rooms, and recheck authority before pending purchases or production cleanup.
+- Preserve native multiplayer synchronization of game state changed by the host.
+
 ## 1.2.7 — 2026-11-01
 
 - Require the native MART OS 2.0 unlock (`softwareUpgradePerk`, perk 29) before automatic pricing can run, including when configuration enables it.

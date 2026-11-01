@@ -6,7 +6,7 @@ internal static class EmployeeNaming
 {
     internal static bool Valid(NPC_Manager npc, int index, string name)
     {
-        return npc != null && npc.isServer && !string.IsNullOrWhiteSpace(name) && name.Length <= 25 && !name.Contains("|")
+        return BetterSupermarketPlugin.EnablePlugin && npc != null && npc.isServer && !string.IsNullOrWhiteSpace(name) && name.Length <= 25 && !name.Contains("|")
             && npc.hiredEmployeesData != null && index >= 0 && index < npc.hiredEmployeesData.Length
             && !string.IsNullOrWhiteSpace(npc.hiredEmployeesData[index])
             && npc.employeesArray != null && index < npc.employeesArray.Length && npc.employeesArray[index] != null;

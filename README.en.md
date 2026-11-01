@@ -4,6 +4,8 @@ English · [繁體中文](README.md)
 
 A **BepInEx 5** quality-of-life mod for **Supermarket Together**, combining restocking, production, warehouse organization, pricing, promotions, cleaning, and employee management. Previously named **AutoRestock2230**.
 
+This mod is **host-only**, including single-player hosting. Other players do not need it. If installed on a joining client, automation, mod UI, hotkeys, and translation overrides remain inactive. Host changes to game state still use the game's native multiplayer synchronization.
+
 ## Features
 
 | Feature | What it does |
@@ -102,7 +104,7 @@ Use `RandomNameStyle = Chinese` with `MaleChineseNames`, `FemaleChineseNames`, a
 
 | Setting | Fresh-install default | Purpose |
 | --- | --- | --- |
-| `General.OnlyHost` | `true` | Run the main automation on the host in multiplayer, reducing duplicate purchases. |
+| `General.OnlyHost` (legacy) | Always host-only | Retained for compatibility; `false` cannot bypass host authority. The in-game toggle has been removed. |
 | `Daytime.OnlyWhenOpen` | `false` | Allow daytime restocking before opening the store. |
 | `Safety.CheckIntervalSeconds` | `10` | Stock-scan interval in real seconds. |
 | `Restock.GateOnIdleEmployee` | `true` | Wait for an idle storage/restocking employee. |
@@ -127,13 +129,13 @@ Requires a .NET SDK (the local build uses .NET 10), plus your installed game and
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.7.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
+`build.ps1` builds Release. `package.ps1` builds and produces `artifacts/BetterSupermarketTogether-1.2.8.zip`. You can also set `SUPERMARKET_TOGETHER_DIR` or call `dotnet build -c Release -p:GameDir="path to game"` directly.
 
 ## Scope and current status
 
 - Purchasing spends in-game money. Adjust stock thresholds and the cash reserve as needed. Production requires recipes, ingredients, workbenches, and production employees.
-- In multiplayer, install on the host and keep `OnlyHost = true`. Employee renaming and slot purchases are host actions.
-- Version 1.2.7 passed compilation. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
+- Only the host can use this mod. Native server authority is required and cannot be disabled through configuration. Leaving a room clears mod UI and pending session state.
+- Version 1.2.8 passed compilation. No new full-match or GUI acceptance run was performed. Updating does not remove existing products or cancel existing/manual production queues.
 - This README provides English documentation. Most mod settings labels are currently in Traditional Chinese.
 - When reporting an issue, include the game version, mod version, and relevant log excerpts.
 

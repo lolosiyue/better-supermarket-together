@@ -18,6 +18,7 @@ internal static class ProductionLifecycle
     private sealed class Collector
     {
         internal ManufacturingProduction Table;
+        internal GameData Game;
         internal string Recipe;
         internal readonly List<int> Gathered = new();
         internal GameObject Source;
@@ -49,7 +50,7 @@ internal static class ProductionLifecycle
 
     internal static bool TryFeed(ManufacturingProduction table, int product)
     {
-        if (!table.isServer || AddTray == null || table.assignedToEmployee || ReadyOrProducing(table)) return false;
+        if (!BetterSupermarketPlugin.EnablePlugin || !table.isServer || AddTray == null || table.assignedToEmployee || ReadyOrProducing(table)) return false;
         var state = Tables.GetValue(table, _ => new TableState());
         state.AutoRecipe = Head(table);
         int before = state.Accepted;
@@ -61,12 +62,12 @@ internal static class ProductionLifecycle
 
     internal static void Accepted(ManufacturingProduction table)
     {
-        if (table.isServer) Tables.GetValue(table, _ => new TableState()).Accepted++;
+        if (BetterSupermarketPlugin.IsHost && table.isServer) Tables.GetValue(table, _ => new TableState()).Accepted++;
     }
 
     internal static void Started(ManufacturingProduction table)
     {
-        if (!table.isServer || Head(table) == null) return;
+        if (!BetterSupermarketPlugin.IsHost || !table.isServer || Head(table) == null) return;
         var state = Tables.GetValue(table, _ => new TableState());
         state.Product = table.productQueue[0];
         state.Recipe = RepairPolicies.NormalizeRecipe(table.combinableQueue[0]);
@@ -76,7 +77,7 @@ internal static class ProductionLifecycle
 
     internal static void Finished(ManufacturingProduction table)
     {
-        if (table.isServer && Tables.TryGetValue(table, out var state)) state.Finished = Time.unscaledTime;
+        if (BetterSupermarketPlugin.IsHost && table.isServer && Tables.TryGetValue(table, out var state)) state.Finished = Time.unscaledTime;
     }
 
     internal static bool HasInFlight(ManufacturingProduction table, int product, string recipe)
@@ -89,6 +90,7 @@ internal static class ProductionLifecycle
     internal static bool ValidateCollector(NPC_Manager manager, NPC_Info employee, out ManufacturingProduction table)
     {
         table = null;
+        if (!BetterSupermarketPlugin.IsHost) return false;
         if (Collectors.TryGetValue(employee, out var collector))
         {
             table = collector.Table;
@@ -104,13 +106,13 @@ internal static class ProductionLifecycle
         table = manager.manufacturingProducersList[index].GetComponent<ManufacturingProduction>();
         string head = Head(table);
         if (head == null) return false;
-        Collectors.Add(employee, new Collector { Table = table, Recipe = head, Position = employee.transform.position });
+        Collectors.Add(employee, new Collector { Table = table, Game = GameData.Instance, Recipe = head, Position = employee.transform.position });
         return true;
     }
 
     internal static bool TakeFromTray(ManufacturingProduction table, int product)
     {
-        if (!table.isServer || RemoveTray == null || table.itemsInTray == null || !table.itemsInTray.Contains(product)) return false;
+        if (!BetterSupermarketPlugin.EnablePlugin || !table.isServer || RemoveTray == null || table.itemsInTray == null || !table.itemsInTray.Contains(product)) return false;
         int before = table.itemsInTray.Count;
         RemoveTray.Invoke(table, new object[] { product, null });
         return table.itemsInTray.Count == before - 1;
@@ -144,7 +146,7 @@ internal static class ProductionLifecycle
     internal static void EmployeeProduced(ManufacturingProduction table)
     {
         var manager = NPC_Manager.Instance;
-        if (!table.isServer || manager == null || manager.employeeParentOBJ == null) return;
+        if (!BetterSupermarketPlugin.IsHost || !table.isServer || manager == null || manager.employeeParentOBJ == null) return;
         foreach (Transform child in manager.employeeParentOBJ.transform)
         {
             var employee = child.GetComponent<NPC_Info>();
@@ -158,6 +160,9 @@ internal static class ProductionLifecycle
         if (ReferenceEquals(employee, null) || !Collectors.TryGetValue(employee, out var collector)) return;
         if (!ReferenceEquals(expectedTable, null) && !ReferenceEquals(collector.Table, expectedTable)) return;
         Collectors.Remove(employee);
+        // A coroutine from an old host session must never return its stock into a new room.
+        if (!BetterSupermarketPlugin.IsHost || collector.Game != GameData.Instance ||
+            collector.Table != null && !collector.Table.isServer) return;
         if (collector.Table != null) collector.Table.assignedToEmployee = false;
         var blackboard = GameData.Instance != null ? GameData.Instance.GetComponent<ManagerBlackboard>() : null;
         var returned = new Dictionary<int, int>();
@@ -174,21 +179,24 @@ internal static class ProductionLifecycle
 
     internal static void Assign(ManufacturingProduction table, NPC_Info employee)
     {
+        if (!BetterSupermarketPlugin.EnablePlugin || !table.isServer) return;
         var state = Tables.GetValue(table, _ => new TableState());
         int generation = ++state.Generation;
         CancelCollector(employee, resetEmployee: false);
         string recipe = Head(table);
         if (recipe != null)
-            Collectors.Add(employee, new Collector { Table = table, Recipe = recipe, Position = employee.transform.position });
+            Collectors.Add(employee, new Collector { Table = table, Game = GameData.Instance, Recipe = recipe, Position = employee.transform.position });
         table.assignedToEmployee = true;
         table.StartCoroutine(WatchOwner(table, employee, generation));
     }
 
     private static IEnumerator WatchOwner(ManufacturingProduction table, NPC_Info employee, int generation)
     {
+        var game = GameData.Instance;
         yield return null; // The caller sets the employee's state immediately after assigning the table.
         var delay = new WaitForSeconds(1f);
-        while (table != null && Tables.TryGetValue(table, out var state) && state.Generation == generation)
+        while (BetterSupermarketPlugin.IsHost && GameData.Instance == game && table != null && table.isServer &&
+            Tables.TryGetValue(table, out var state) && state.Generation == generation)
         {
             bool active = employee != null && Collectors.TryGetValue(employee, out var collector) && collector.Table == table &&
                 !employee.employeeDismissed && employee.taskPriority == 7 && employee.thiefProductsNumber == 0 &&
@@ -197,7 +205,8 @@ internal static class ProductionLifecycle
             if (!active && !ReadyOrProducing(table)) break;
             yield return delay;
         }
-        if (table != null && Tables.TryGetValue(table, out var current) && current.Generation == generation)
+        if (BetterSupermarketPlugin.IsHost && GameData.Instance == game && table != null && table.isServer &&
+            Tables.TryGetValue(table, out var current) && current.Generation == generation)
         {
             CancelCollector(employee, table);
             table.assignedToEmployee = false;

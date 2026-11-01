@@ -7,6 +7,7 @@ internal static class GameCanvasNotificationPatch
 {
 	private static void Postfix(ref bool ___inCooldown)
 	{
+        if (!BetterSupermarketPlugin.IsHost) { BetterSupermarketPlugin.PendingNotification = null; return; }
 		string pendingNotification = BetterSupermarketPlugin.PendingNotification;
 		if (pendingNotification != null)
 		{

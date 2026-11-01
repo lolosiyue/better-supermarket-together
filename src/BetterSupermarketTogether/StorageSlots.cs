@@ -127,7 +127,7 @@ internal static class ReachableOrdinaryStoragePatch
     private static bool Prefix(NPC_Manager __instance, int __0, MethodBase __originalMethod, ref int __result)
     {
         var employee = EmployeeWorkGuard.Current;
-        if (employee == null) return true;
+        if (!BetterSupermarketPlugin.IsHost || employee == null) return true;
         __result = StorageSlots.OrdinaryContainer(__instance, employee, __0, __originalMethod.Name == "GetStorageContainerWithBoxToMerge");
         if (__result >= 0 && __0 != 10000)
             employee.currentFreeStorageOBJ = __instance.storageOBJ.transform.GetChild(__result).gameObject;
@@ -148,7 +148,7 @@ internal static class ReachableManufacturedStoragePatch
     private static bool Prefix(NPC_Manager __instance, int __0, string __1, MethodBase __originalMethod, ref int __result)
     {
         var employee = EmployeeWorkGuard.Current;
-        if (employee == null) return true;
+        if (!BetterSupermarketPlugin.IsHost || employee == null) return true;
         __result = StorageSlots.ManufacturedContainer(__instance, employee, __0, __1, __originalMethod.Name == "GetStorageContainerWithManufacturingBoxToMerge");
         if (__result >= 0 && __0 != 10000)
             employee.currentFreeStorageOBJ = __instance.manufacturingStorageShelvesOBJ.transform.GetChild(__result).gameObject;
@@ -166,7 +166,7 @@ internal static class OrdinaryStorageRowPatch
     }
     private static bool Prefix(NPC_Manager __instance, int __0, int __1, MethodBase __originalMethod, ref int __result)
     {
-        if (EmployeeWorkGuard.Current == null) return true;
+        if (!BetterSupermarketPlugin.IsHost || EmployeeWorkGuard.Current == null) return true;
         var root = __instance.storageOBJ;
         __result = root != null && __0 >= 0 && __0 < root.transform.childCount ?
             StorageSlots.OrdinaryRow(root.transform.GetChild(__0).GetComponent<Data_Container>(), __1, __originalMethod.Name == "GetStorageRowWithBoxToMerge") : -1;
@@ -184,7 +184,7 @@ internal static class ManufacturedStorageRowPatch
     }
     private static bool Prefix(NPC_Manager __instance, int __0, int __1, string __2, MethodBase __originalMethod, ref int __result)
     {
-        if (EmployeeWorkGuard.Current == null) return true;
+        if (!BetterSupermarketPlugin.IsHost || EmployeeWorkGuard.Current == null) return true;
         var root = __instance.manufacturingStorageShelvesOBJ;
         __result = root != null && __0 >= 0 && __0 < root.transform.childCount ?
             StorageSlots.ManufacturedRow(root.transform.GetChild(__0).GetComponent<ManufacturingContainer>(), __1, __2, __originalMethod.Name == "GetStorageRowWithManufacturingBoxToMerge") : -1;

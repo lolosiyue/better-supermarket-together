@@ -116,6 +116,7 @@ internal static class WarehouseConsolidator
 
 	public static void Run(NPC_Manager npc, int maxMoves)
 	{
+        if (!BetterSupermarketPlugin.EnablePlugin) return;
 		if (npc.storageOBJ == null || npc.employeeParentOBJ == null)
 		{
 			return;

@@ -10,6 +10,7 @@ namespace BetterSupermarketTogether;
 internal static class SettingsPanelUI
 {
 	private static bool _buttonCreated;
+    private static GameObject _boardButton;
 
 	private static GameObject _panel;
 
@@ -57,6 +58,8 @@ internal static class SettingsPanelUI
 
 	public static void ResetForSceneChange()
 	{
+        if (_boardButton != null) UnityEngine.Object.Destroy(_boardButton);
+        _boardButton = null;
 		_buttonCreated = false;
 		_panel = null;
 		_page1 = null;
@@ -73,6 +76,7 @@ internal static class SettingsPanelUI
 
 	public static void EnsureBoardButton()
 	{
+        if (!BetterSupermarketPlugin.IsHost) return;
         if (PanelOpen) RefreshValues();
 		if (_buttonCreated)
 		{
@@ -95,11 +99,13 @@ internal static class SettingsPanelUI
 		}
 		if (transform.Find("AR2230_Tab") != null)
 		{
+            _boardButton = transform.Find("AR2230_Tab").gameObject;
 			_buttonCreated = true;
 			return;
 		}
 		GameObject gameObject2 = UnityEngine.Object.Instantiate(transform.GetChild(transform.childCount - 1).gameObject, transform);
 		gameObject2.name = "AR2230_Tab";
+        _boardButton = gameObject2;
 		PlayMakerFSM[] componentsInChildren = gameObject2.GetComponentsInChildren<PlayMakerFSM>(includeInactive: true);
 		for (int i = 0; i < componentsInChildren.Length; i++)
 		{
@@ -137,6 +143,7 @@ internal static class SettingsPanelUI
 
 	public static void TogglePanel()
 	{
+        if (!BetterSupermarketPlugin.IsHost) return;
 		if (_panel == null)
 		{
 			BuildPanel();
@@ -262,6 +269,7 @@ internal static class SettingsPanelUI
 
 	private static void BuildPanel()
 	{
+        if (!BetterSupermarketPlugin.IsHost) return;
 		if (BetterSupermarketPlugin.Instance == null)
 		{
 			return;
@@ -429,7 +437,7 @@ internal static class SettingsPanelUI
 		button.colors = colors;
 		button.onClick.AddListener(() =>
 		{
-			onClick();
+			if (BetterSupermarketPlugin.IsHost) onClick();
 		});
 		if (!string.IsNullOrEmpty(label))
 		{
@@ -452,6 +460,7 @@ internal static class SettingsPanelUI
 		toggle.isOn = available && entry.Value;
 		toggle.onValueChanged.AddListener((bool v) =>
 		{
+            if (!BetterSupermarketPlugin.IsHost) return;
             if (pricing && !BetterSupermarketPlugin.AutoPricingUnlocked) { RefreshValues(); return; }
 			entry.Value = v;
 		});

@@ -20,7 +20,7 @@ internal static class RestockAssignments
 
     internal static void RememberWait(NPC_Info employee, int targetState)
     {
-        if (employee != null && employee.isEmployee)
+        if (BetterSupermarketPlugin.IsHost && employee != null && employee.isEmployee)
             WaitTargets.GetValue(employee, _ => new WaitTarget()).State = targetState;
     }
 

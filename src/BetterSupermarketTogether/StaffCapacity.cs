@@ -19,7 +19,7 @@ internal static class StaffCapacity
 
     internal static void Apply(NPC_Manager npc, int extras)
     {
-        if (npc == null || !npc.isServer || !npc.initialEmployeesSpawnIsFinished) return;
+        if (!BetterSupermarketPlugin.IsHost || npc == null || !npc.isServer || !npc.initialEmployeesSpawnIsFinished) return;
         if (_manager != npc)
         {
             _manager = npc;
@@ -45,6 +45,7 @@ internal static class StaffCapacity
 
     internal static void EnsureCapacity(NPC_Manager npc, int requested)
     {
+        if (!BetterSupermarketPlugin.IsHost || npc == null) return;
         int size = Math.Max(requested, Math.Max(npc.hiredEmployeesData?.Length ?? 0,
             Math.Max(npc.priorityArray?.Length ?? 0, npc.employeesArray?.Length ?? 0)));
         if (npc.hiredEmployeesData == null || npc.hiredEmployeesData.Length < size)
@@ -75,6 +76,7 @@ internal static class EmployeeSaveCapacityPatch
 {
     private static void Prefix(SaveBehaviour __instance, string[] hiredEmployeesDataValues)
     {
+        if (!BetterSupermarketPlugin.IsHost) return;
         var npc = __instance.NPCManager?.GetComponent<NPC_Manager>();
         if (npc != null && hiredEmployeesDataValues != null)
             StaffCapacity.EnsureCapacity(npc, hiredEmployeesDataValues.Length);
