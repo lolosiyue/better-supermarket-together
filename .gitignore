@@ -15,3 +15,5 @@ artifacts/
 .env
 .env.*
 GamePath.local.props
+*.key
+assets/companion/*.vrm

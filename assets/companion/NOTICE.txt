@@ -1,0 +1,27 @@
+DeepSeek-chan character model (unofficial fan work)
+
+Source: https://github.com/tegnike/deepseek-chan-vrm
+Pinned commit: 3b28db3bdde8d2e73b698a060044e0d8ebdf8b7b
+File: DeepSeek-chan.vrm (33,616,628 bytes)
+SHA-256: 9fa455e48ee2271dc7c2b62f2f2edcd47709406ca89067b6f544979589958f42
+
+Credits:
+- Original character "溟月": 上善无形
+  https://space.bilibili.com/4456176
+- Maid character design: ZipZipPipe
+  https://space.bilibili.com/4168597
+- 3D model: ニケ (tegnike)
+  https://github.com/tegnike
+
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+Full license is included as LICENSE in this folder. Upstream documentation is
+included as README.en.md. This model is independent of the mod code's MIT license.
+
+The distributed VRM is unmodified. Better Supermarket Together loads its base
+textures and skinning and transfers evaluated native employee bone poses, including
+Generic Bip01 rigs, using bind-pose mapping. Its minimal
+loader does not implement MToon, spring physics or facial expression blend shapes.
+The appearance is local to the host. DeepSeek and the game developers do not
+endorse or maintain this fan integration. Retain this notice and the model license
+when redistributing. Any distributed adapted model must follow the same license.

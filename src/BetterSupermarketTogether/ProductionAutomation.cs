@@ -9,7 +9,8 @@ namespace BetterSupermarketTogether;
 internal static class ProductionAutomation
 {
 	internal static bool Warned;
-    internal static string Status = "等待生產部載入";
+    private static ModText.Message _status = "等待生產部載入";
+    internal static string Status { get => _status.ToString(); private set => _status = value; }
     private static bool _dirty;
 
     internal static void Reset()
@@ -199,8 +200,8 @@ internal static class ProductionAutomation
             queued++;
             BetterSupermarketPlugin.Log.LogInfo($"Auto-production: queued '{ManufacturingName(target.Product)}' recipe={target.Recipe}, target={(OnlyShelfRecipes ? "sales-shelf" : "history")} reserve={target.Stock.Reserve} (warehouse={target.Stock.Warehouse}, ground={target.Stock.Ground}, held={target.Stock.Held}; shelf={target.Stock.Shelf} excluded), threshold={QueueThreshold}, destination={destination}.");
         }
-        Status = $"目標 {targets.Count} 配方｜備貨不足 {shortage}｜待製作 {pending + queued}｜本輪新增 {queued}";
-        if (queued == 0 && _queueFailure != null) Status += "｜" + _queueFailure;
+        _status = new ModText.Message("目標 {0} 配方｜備貨不足 {1}｜待製作 {2}｜本輪新增 {3}", targets.Count, shortage, pending + queued, queued);
+        if (queued == 0 && _queueFailure != null) _status = new ModText.Message("{0} | {1}", _status, new ModText.Message(_queueFailure));
         if (queued > 0 && notify)
             BetterSupermarketPlugin.PendingNotification = "`Better Supermarket: queued " + queued + " recipe(s)";
 		if (maxTray <= 0)

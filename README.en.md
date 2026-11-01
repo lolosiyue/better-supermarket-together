@@ -1,5 +1,15 @@
 # Better Supermarket Together
 
+**1.4.1 centralizes companion UI translations.** Work states, errors, steps and cache captions share one Chinese/English catalog. New execution notices can switch language after reload; explicit plan phases remain independent of displayed text. See [companion localization](docs/COMPANION-LOCALIZATION.md).
+
+**1.4.0 adds autonomous companion planning, product/shelf restocking targets, host following and ordered tasks.** F7 provides autonomy, stop-plan and aim-at-shelf controls. Plans hand over carried goods safely and stop on failure. Autonomy is opt-in for each shop session, with a default 120-second minimum decision interval and 20 decisions per rolling hour. See [work plans](docs/DEEPSEEK-WORK-PLANS.md).
+
+**1.3.2 improves companion prompt-cache reuse and adds measured usage in F7.** Stable system/tools, append-only exact turn history and a bounded session ledger preserve reusable prefixes. Final-only replies retain the same tool schema/choice while client-side code rejects additional tool actions. Cache rates are token-weighted from reported usage; missing counters show as unreported. See [cache details and synthetic measurements](docs/DEEPSEEK-CACHE.md).
+
+**1.3.1 fixes the DeepSeek avatar integration for all seven native Generic Bip01 employee rigs.** It transfers evaluated bone poses from the native rig and automatically retries when the model is not yet available. 74 automated checks pass; actual in-game rendering/animation acceptance is still pending. Existing companion chat, memory and job assignment remain unchanged.
+
+**1.3.0 adds a host-only DeepSeek employee companion.** Press F7, bind one hired employee, configure an API key, then chat, retain local per-shop preferences and assign native jobs in natural language. The bundled DeepSeek-chan VRM is separately licensed CC BY-NC-SA 4.0 (attribution, noncommercial, share alike), independently of the MIT code. Full setup, credits, limitations and validation are in [the companion guide](docs/DEEPSEEK-COMPANION.md). GUI/model/live-API acceptance is incomplete; the initial plugin loaded and 47 automated checks passed.
+
 English · [繁體中文](README.md)
 
 A **BepInEx 5** quality-of-life mod for **Supermarket Together**, combining restocking, production, warehouse organization, pricing, promotions, cleaning, and employee management. Previously named **AutoRestock2230**.
@@ -27,6 +37,7 @@ This mod is **host-only**, including single-player hosting. Other players do not
 | Cleaner robot patrol | Patrols while idle and looks for nearby unclaimed trash. Patrol radius is configurable. |
 | Traditional Chinese text corrections | Includes an override table for selected in-game translations, applied when the game language is Chinese. |
 | In-game controls and status | Manager-board plugin button, F10 settings, F8 status overlay, F9 report, and F11 diagnostic logging. |
+| English and Chinese interface | Settings, buttons, stock categories, employee and production messages support English and Traditional Chinese. Follows the game language by default, with an immediate manual switch in F10. |
 
 ## Separate ordinary and manufacturing workflows
 
@@ -62,10 +73,12 @@ When upgrading from AutoRestock2230, remove or disable the old `AutoRestock2230.
 
 ## Controls
 
+Use **F10 → UI language** to cycle through `Auto`, `English`, and `TraditionalChinese`. Auto uses Traditional Chinese for a Chinese game and English for other game languages. UI language and random-name style are independent. Switching the interface preserves employee names, chat history, and saved memories.
+
 | Control | Action |
 | --- | --- |
-| Manager board → 插件, or F10 | Open/close settings. Page 1 contains the main options; page 2 contains category stock thresholds. |
-| F10 → 員工改名 → 隨機風格 | Switch between `中文 / Chinese` and `英文 / English`, then use an individual random-name button or randomize everyone. Switching the style alone does not rename anyone. |
+| Manager board → Mods, or F10 | Open/close settings. Page 1 contains the main options; page 2 contains category stock thresholds. |
+| F10 → Employee names → Name style | Switch between Chinese and English, then use an individual random-name button or randomize everyone. Switching the style alone does not rename anyone. |
 | F8 | Toggle the top-left status overlay. |
 | F9 | Show the full status report. |
 | F11 | Write employee, capacity, recipe, per-product stock, and purchase-skip diagnostics to `BepInEx/LogOutput.log`. |
@@ -91,6 +104,13 @@ BepInEx/config/local.supermarkettogether.autorestock2230.cfg
 ```
 
 Common options can be changed in-game. Close the game before editing the file manually.
+
+Configuration descriptions are provided in English and Chinese. To force the English interface:
+
+```ini
+[Localization]
+UILanguage = English
+```
 
 To use English random names and customize their pool:
 

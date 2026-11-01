@@ -113,7 +113,7 @@ internal static class RestockAssignments
 
     internal static void GuardAssignment(NPC_Manager manager, GameObject requester, bool manufacturing, ref int[] task)
     {
-        if (!BetterSupermarketPlugin.EnablePlugin || !BetterSupermarketPlugin.SmartRestockEnabled ||
+        if (!BetterSupermarketPlugin.EnablePlugin || (!BetterSupermarketPlugin.SmartRestockEnabled && !CompanionWorkWorld.HasTarget(requester?.GetComponent<NPC_Info>())) ||
             task == null || task.Length < 6 || task[0] < 0) return;
         Collect(manager, requester, manufacturing, out var shelves, out var sources);
         if (shelves.Contains(task[0]) || sources.Contains(SmarterRestockerTaskPatch.SlotKey(task[2], task[3])))
@@ -154,7 +154,8 @@ internal static class RestockAssignments
             if (contents == null) continue;
             for (int row = 0; row + 1 < contents.Length; row += 2)
             {
-                if (contents[row] != productId || contents[row + 1] < 0) continue;
+                if (contents[row] != productId || contents[row + 1] < 0 ||
+                    !manufacturing && !CompanionWorkWorld.Accepts(employee,root.transform.GetChild(shelf).GetComponent<Data_Container>(),row,productId)) continue;
                 if (manufacturing && (recipe == null || recipes == null || row / 2 >= recipes.Length || RepairPolicies.NormalizeRecipe(recipes[row / 2]) != recipe)) continue;
                 int capacity = manufacturing ? manager.GetMaxManufacturingProductsPerRow(shelf, productId) : manager.GetMaxProductsPerRow(shelf, productId);
                 if (capacity <= 0 || contents[row + 1] >= capacity) continue;
@@ -190,7 +191,7 @@ internal static class RestockRetargetPatch
     private static bool Prefix(NPC_Manager __instance, int productIDToCheck, NPC_Info npcInfoComponent,
         int currentShelfIndex, ref bool __result)
     {
-        if (!BetterSupermarketPlugin.EnablePlugin || !BetterSupermarketPlugin.SmartRestockEnabled) return true;
+        if (!BetterSupermarketPlugin.EnablePlugin || !BetterSupermarketPlugin.SmartRestockEnabled && !CompanionWorkWorld.HasTarget(npcInfoComponent)) return true;
         __result = RestockAssignments.Retarget(__instance, npcInfoComponent, productIDToCheck, currentShelfIndex, false, null);
         return false;
     }

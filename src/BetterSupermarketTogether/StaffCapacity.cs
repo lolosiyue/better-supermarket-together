@@ -43,9 +43,11 @@ internal static class StaffCapacity
         }
     }
 
-    internal static void EnsureCapacity(NPC_Manager npc, int requested)
+    internal static void EnsureCapacity(NPC_Manager npc, int requested, bool loadingLocalSave = false)
     {
-        if (!BetterSupermarketPlugin.IsHost || npc == null) return;
+        // Local save deserialization can precede StartHost, even after the client has
+        // become active. Only a connected remote client rules out local host loading.
+        if (npc == null || !BetterSupermarketPlugin.IsHost && !(loadingLocalSave && !Mirror.NetworkClient.isConnected)) return;
         int size = Math.Max(requested, Math.Max(npc.hiredEmployeesData?.Length ?? 0,
             Math.Max(npc.priorityArray?.Length ?? 0, npc.employeesArray?.Length ?? 0)));
         if (npc.hiredEmployeesData == null || npc.hiredEmployeesData.Length < size)
@@ -74,11 +76,16 @@ internal static class StaffCapacity
 [HarmonyPatch(typeof(SaveBehaviour), "LoadEmployeesDataValues")]
 internal static class EmployeeSaveCapacityPatch
 {
-    private static void Prefix(SaveBehaviour __instance, string[] hiredEmployeesDataValues)
+    internal static void Prefix(SaveBehaviour __instance, string[] hiredEmployeesDataValues)
     {
-        if (!BetterSupermarketPlugin.IsHost) return;
+        if (!BetterSupermarketPlugin.IsHost && Mirror.NetworkClient.isConnected) return;
         var npc = __instance.NPCManager?.GetComponent<NPC_Manager>();
         if (npc != null && hiredEmployeesDataValues != null)
-            StaffCapacity.EnsureCapacity(npc, hiredEmployeesDataValues.Length);
+        {
+            int before = npc.hiredEmployeesData?.Length ?? 0;
+            StaffCapacity.EnsureCapacity(npc, hiredEmployeesDataValues.Length, loadingLocalSave: true);
+            if (before < hiredEmployeesDataValues.Length)
+                BetterSupermarketPlugin.Log.LogInfo($"Staff load: prepared {before}->{npc.hiredEmployeesData.Length} slots for {hiredEmployeesDataValues.Length} saved records before native deserialization (host={BetterSupermarketPlugin.IsHost}, clientActive={Mirror.NetworkClient.active}, connected={Mirror.NetworkClient.isConnected}).");
+        }
     }
 }

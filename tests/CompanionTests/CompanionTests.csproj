@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion><ImplicitUsings>enable</ImplicitUsings>
+    <GameDir Condition="'$(GameDir)' == ''">$(SUPERMARKET_TOGETHER_DIR)</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionProtocol.cs" Link="CompanionProtocol.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionContext.cs" Link="CompanionContext.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionUsage.cs" Link="CompanionUsage.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionPlanning.cs" Link="CompanionPlanning.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/ModText.Catalog.cs" Link="ModText.Catalog.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/ModText.Messages.cs" Link="ModText.Messages.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionRigPolicy.cs" Link="CompanionRigPolicy.cs" />
+    <None Update="employee-bone-names.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../../src/BetterSupermarketTogether/StaffCapacity.cs" Link="StaffCapacity.cs" />
+    <Reference Include="Newtonsoft.Json"><HintPath>$(GameDir)/Supermarket Together_Data/Managed/Newtonsoft.Json.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

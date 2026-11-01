@@ -221,7 +221,10 @@ internal static class EmployeeRandomNamePatch
 		text.color = Color.white;
 		text.alignment = TextAnchor.MiddleCenter;
 		text.raycastTarget = false;
-		text.text = content;
+		text.resizeTextForBestFit = true;
+		text.resizeTextMinSize = 10;
+		text.resizeTextMaxSize = fontSize;
+		ModText.Bind(text, content);
 	}
 }
 

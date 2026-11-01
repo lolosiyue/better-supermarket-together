@@ -25,6 +25,11 @@ internal static class SmarterRestockerTaskPatch
 
 	private static bool Prefix(NPC_Manager __instance, GameObject employeeRequesterOBJ, ref int[] __result)
 	{
+		if (BetterSupermarketPlugin.EnablePlugin && CompanionWorkWorld.HasTarget(employeeRequesterOBJ?.GetComponent<NPC_Info>()))
+		{
+			__result = SelectTask(__instance, employeeRequesterOBJ);
+			return false;
+		}
 		if (!BetterSupermarketPlugin.EnablePlugin || !BetterSupermarketPlugin.SmartRestockEnabled)
 		{
 			return true;
@@ -74,7 +79,7 @@ internal static class SmarterRestockerTaskPatch
             for (int pair = 0; pair + 1 < contents.Length; pair += 2)
             {
                 int product = contents[pair], count = contents[pair + 1];
-                if (product < 0 || count < 0) continue;
+                if (product < 0 || count < 0 || !CompanionWorkWorld.Accepts(requester.GetComponent<NPC_Info>(),target,pair,product)) continue;
                 int capacity = npc.GetMaxProductsPerRow(shelf, product);
                 if (capacity <= 0 || count >= capacity || !route.CanReach(target.standSpot.transform.position)) continue;
                 rows.Add(new RowCandidate(shelf, pair, product, count, capacity));

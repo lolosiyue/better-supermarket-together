@@ -27,9 +27,10 @@ internal static class EmployeeWorkGuard
     {
         __state = Current;
         Current = null;
-        if (!BetterSupermarketPlugin.EnablePlugin || !BetterSupermarketPlugin.SmartRestockEnabled || !__instance.isServer ||
+        if (!BetterSupermarketPlugin.EnablePlugin || !__instance.isServer ||
             __instance.employeeParentOBJ == null || __0 < 0 || __0 >= __instance.employeeParentOBJ.transform.childCount) return true;
         var employee = __instance.employeeParentOBJ.transform.GetChild(__0).GetComponent<NPC_Info>();
+        if (!BetterSupermarketPlugin.SmartRestockEnabled && !CompanionWorkWorld.HasTarget(employee)) return true;
         if (employee == null || (employee.taskPriority != 2 && employee.taskPriority != 3 && employee.taskPriority != 7)) return true;
         Current = employee;
         if (employee.employeeDismissed || __instance.employeesOnRiot) return true;
@@ -110,6 +111,7 @@ internal static class EmployeeWorkGuard
         string recipe = collecting ? employee.packagingAssignedOrderData : employee.mBoxCombinableData;
         bool validRow = contents != null && task[1] >= 0 && task[1] % 2 == 0 && task[1] + 1 < contents.Length &&
             contents[task[1]] == task[4] && contents[task[1] + 1] >= 0 && stand != null;
+        if (!manufacturing && validRow) validRow=CompanionWorkWorld.Accepts(employee,targetObject.GetComponent<Data_Container>(),task[1],task[4]);
         if (manufacturing) validRow &= recipes != null && task[1] >= 0 && task[1] / 2 < recipes.Length &&
             RepairPolicies.NormalizeRecipe(recipes[task[1] / 2]) == RepairPolicies.NormalizeRecipe(recipe);
         int capacity = validRow ? manufacturing ? manager.GetMaxManufacturingProductsPerRow(task[0], task[4]) :

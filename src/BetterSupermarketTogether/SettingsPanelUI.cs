@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace BetterSupermarketTogether;
 
-internal static class SettingsPanelUI
+internal static partial class SettingsPanelUI
 {
 	private static bool _buttonCreated;
     private static GameObject _boardButton;
@@ -58,6 +58,8 @@ internal static class SettingsPanelUI
 
 	public static void ResetForSceneChange()
 	{
+        CloseCompanion();
+        _page4 = null;
         if (_boardButton != null) UnityEngine.Object.Destroy(_boardButton);
         _boardButton = null;
 		_buttonCreated = false;
@@ -72,11 +74,14 @@ internal static class SettingsPanelUI
 		_canvas = null;
 		BoolBindings.Clear();
 		FloatBindings.Clear();
+		LabelBindings.Clear();
+		ModText.ClearBindings();
 	}
 
 	public static void EnsureBoardButton()
 	{
         if (!BetterSupermarketPlugin.IsHost) return;
+        ModText.Refresh();
         if (PanelOpen) RefreshValues();
 		if (_buttonCreated)
 		{
@@ -131,19 +136,20 @@ internal static class SettingsPanelUI
 		TextMeshProUGUI componentInChildren = root.GetComponentInChildren<TextMeshProUGUI>(includeInactive: true);
 		if (componentInChildren != null)
 		{
-			componentInChildren.text = text;
+			ModText.Bind(componentInChildren, text);
 			return;
 		}
 		Text componentInChildren2 = root.GetComponentInChildren<Text>(includeInactive: true);
 		if (componentInChildren2 != null)
 		{
-			componentInChildren2.text = text;
+			ModText.Bind(componentInChildren2, text);
 		}
 	}
 
 	public static void TogglePanel()
 	{
         if (!BetterSupermarketPlugin.IsHost) return;
+        CloseCompanion();
 		if (_panel == null)
 		{
 			BuildPanel();
@@ -168,6 +174,8 @@ internal static class SettingsPanelUI
 
 	private static void ShowPage(int page)
     {
+        if (page != 4) CloseCompanion();
+        if (_page4 != null) _page4.SetActive(page == 4);
         if (_page1 != null) _page1.SetActive(page == 1);
         if (_page2 != null) _page2.SetActive(page == 2);
         if (_page3 != null)
@@ -193,20 +201,25 @@ internal static class SettingsPanelUI
         for (int i = 0; i < npc.hiredEmployeesData.Length; i++)
             if (!string.IsNullOrWhiteSpace(npc.hiredEmployeesData[i])) employees.Add(i);
         _employeePage = Math.Max(0, Math.Min(_employeePage, Math.Max(0, (employees.Count - 1) / 8)));
-        NewText(_page3.transform, $"已僱用 {npc.numberOfHiredEmployees} / 上限 {npc.maxEmployees}，第 {_employeePage + 1} 頁", 15, new Vector2(90f, 245f), new Vector2(570f, 28f), TextAnchor.MiddleCenter);
-        AddButton(_page3.transform, "隨機風格：" + BetterSupermarketPlugin.Instance.RandomNameStyleLabel,
+        var employeeCount = NewText(_page3.transform, "", 15, new Vector2(90f, 245f), new Vector2(570f, 28f), TextAnchor.MiddleCenter);
+        LabelBindings.Add((employeeCount, () => ModText.Format("已僱用 {0} / 上限 {1}，第 {2} 頁", npc.numberOfHiredEmployees, npc.maxEmployees, _employeePage + 1)));
+        var nameStyle = AddButton(_page3.transform, "",
             new Vector2(-350f,245f), new Vector2(260f,34f), new Color(.25f,.35f,.55f), () =>
             {
                 BetterSupermarketPlugin.Instance.ToggleRandomNameStyle();
                 BuildEmployeePage();
             });
+        var nameStyleText = NewText(nameStyle.transform, "", 14, Vector2.zero, new Vector2(260f, 34f), TextAnchor.MiddleCenter);
+        LabelBindings.Add((nameStyleText, () => ModText.Get("隨機風格：") + ModText.Get(BetterSupermarketPlugin.Instance.RandomNameStyleLabel)));
         for (int n = _employeePage * 8; n < Math.Min(employees.Count, (_employeePage + 1) * 8); n++)
         {
             int index = employees[n];
             float y = 190f - (n % 8) * 50f;
             string[] data = npc.hiredEmployeesData[index].Split('|');
             if (data.Length <= 9) continue;
-            NewText(_page3.transform, $"員工 {index + 1}", 15, new Vector2(-350f,y), new Vector2(160f,32f), TextAnchor.MiddleLeft);
+            var employeeNumber = NewText(_page3.transform, "", 15, new Vector2(-430f,y), new Vector2(100f,32f), TextAnchor.MiddleLeft);
+            LabelBindings.Add((employeeNumber, () => ModText.Format("員工 {0}", index + 1)));
+            AddButton(_page3.transform, "同伴", new Vector2(410f,y), new Vector2(90f,34f), new Color(.2f,.45f,.5f), () => { BetterSupermarketPlugin.Instance.Companion.Bind(index); OpenCompanion(); });
             GameObject entry = NewRect(_page3.transform, "Name_" + index, new Vector2(350f, 34f), new Vector2(-90f,y), new Color(.95f,.95f,.95f));
             var input = entry.AddComponent<InputField>();
             Text value = NewText(entry.transform, "", 16, Vector2.zero, new Vector2(330f,32f), TextAnchor.MiddleLeft);
@@ -237,6 +250,7 @@ internal static class SettingsPanelUI
 
 	private static void RefreshValues()
 	{
+		LabelBindings.RemoveAll(binding => binding.text == null);
 		foreach (var (toggle, configEntry) in BoolBindings)
 		{
             bool available = !IsPricingSetting(configEntry) || BetterSupermarketPlugin.AutoPricingUnlocked;
@@ -254,7 +268,7 @@ internal static class SettingsPanelUI
 		{
 			Text item4 = labelBinding.text;
 			Func<string> item5 = labelBinding.get;
-			item4.text = item5();
+			if (item4 != null) item4.text = item5();
 		}
 	}
 
@@ -295,16 +309,20 @@ internal static class SettingsPanelUI
 		_page1 = NewStretch(_panel.transform, "Page1");
 		_page2 = NewStretch(_panel.transform, "Page2");
 		_page3 = NewStretch(_panel.transform, "Page3");
-		NewText(_page1.transform, "Better Supermarket Together 設定", 20, new Vector2(-330f, 292f), new Vector2(600f, 30f), TextAnchor.MiddleLeft);
+		NewText(_page1.transform, "Better Supermarket Together 設定", 20, new Vector2(-330f, 292f), new Vector2(300f, 30f), TextAnchor.MiddleLeft);
 		AddButton(_page1.transform, "X", new Vector2(470f, 292f), new Vector2(44f, 32f), new Color(0.6f, 0.2f, 0.2f), TogglePanel);
 		AddButton(_page1.transform, "第2頁：分類最低庫存", new Vector2(0f, 292f), new Vector2(240f, 32f), new Color(0.2f, 0.35f, 0.55f), () =>
 		{
 			ShowPage(2);
 		});
 		AddButton(_page1.transform, "員工改名", new Vector2(290f, 292f), new Vector2(160f, 32f), new Color(0.2f, 0.4f, 0.6f), () => ShowPage(3));
-        NewText(_page1.transform, "F10 → 員工改名：可自行輸入或隨機改名", 13, new Vector2(0f, -260f), new Vector2(900f, 28f), TextAnchor.MiddleCenter);
+        NewText(_page1.transform, "F10 → 員工改名：可自行輸入或隨機改名", 13, new Vector2(-230f, -260f), new Vector2(500f, 28f), TextAnchor.MiddleCenter);
         Text productionStatus = NewText(_page1.transform, "", 13, new Vector2(0f, -290f), new Vector2(900f, 28f), TextAnchor.MiddleCenter);
-        LabelBindings.Add((productionStatus, () => "自動生產：" + ProductionAutomation.Status));
+        LabelBindings.Add((productionStatus, () => ModText.Get("自動生產：") + ProductionAutomation.Status));
+        var languageButton = AddButton(_page1.transform, "", new Vector2(265f, -231f), new Vector2(450f, 22f), new Color(.2f,.35f,.55f), () => { ModText.CycleLanguage(); RefreshValues(); });
+        var languageText = NewText(languageButton.transform, "", 13, Vector2.zero, new Vector2(440f, 22f), TextAnchor.MiddleCenter);
+        LabelBindings.Add((languageText, () => ModText.LanguageLabel));
+        AddButton(_page1.transform, "F7：DeepSeek 同伴", new Vector2(280f, -260f), new Vector2(240f, 30f), new Color(.15f,.4f,.55f), OpenCompanion);
         List<(string, ConfigEntry<bool>)> list = new List<(string, ConfigEntry<bool>)>();
 		BetterSupermarketPlugin.Instance.CollectBoolSettings(list);
 		List<(string, Func<float>, Action<float>, float)> list2 = new List<(string, Func<float>, Action<float>, float)>();
@@ -315,7 +333,7 @@ internal static class SettingsPanelUI
 		{
 			string item = item11.Item1;
 			ConfigEntry<bool> item2 = item11.Item2;
-			float x = ((num2 == 0) ? (-488) : 18);
+			float x = ((num2 == 0) ? (-253) : 253);
 			float y = 252 - num * 38;
 			AddBoolRow(_page1.transform, item, item2, new Vector2(x, y));
 			num++;
@@ -333,22 +351,22 @@ internal static class SettingsPanelUI
 			Func<float> item4 = item12.Item2;
 			Action<float> item5 = item12.Item3;
 			float item6 = item12.Item4;
-			float x2 = ((num2 == 0) ? (-488) : 18);
+			float x2 = ((num2 == 0) ? (-253) : 253);
 			float y2 = 252 - (8 + num) * 38;
 			AddFloatRow(_page1.transform, item3, item4, item5, item6, new Vector2(x2, y2));
 			num++;
-			if (num >= 4)
+			if (num >= 4 && num2 == 0)
 			{
 				num = 0;
 				num2 = 1;
 			}
 		}
-		GameObject gameObject3 = NewRect(_page1.transform, "row_staff", new Vector2(470f, 30f), new Vector2(-488f, -204f), new Color(1f, 0.85f, 0.4f, 0.1f));
+		GameObject gameObject3 = NewRect(_page1.transform, "row_staff", new Vector2(470f, 30f), new Vector2(-253f, -204f), new Color(1f, 0.85f, 0.4f, 0.1f));
 		Text staffText = NewText(gameObject3.transform, "", 14, new Vector2(-95f, 0f), new Vector2(300f, 30f), TextAnchor.MiddleLeft);
 		Func<string> staffLabel = () =>
 		{
-			string lastStaffPurchaseMessage = BetterSupermarketPlugin.Instance.LastStaffPurchaseMessage;
-			return (!string.IsNullOrEmpty(lastStaffPurchaseMessage)) ? lastStaffPurchaseMessage : ("僱用上限 +1（$" + BetterSupermarketPlugin.Instance.ExtraSlotCost + "）［僅主機］");
+			string lastStaffPurchaseMessage = BetterSupermarketPlugin.Instance.LastStaffPurchaseMessage.ToString();
+			return (!string.IsNullOrEmpty(lastStaffPurchaseMessage)) ? lastStaffPurchaseMessage : ModText.Format("僱用上限 +1（${0}）［僅主機］", BetterSupermarketPlugin.Instance.ExtraSlotCost);
 		};
 		AddButton(gameObject3.transform, "購買", new Vector2(195f, 0f), new Vector2(60f, 26f), new Color(0.25f, 0.5f, 0.3f), () =>
 		{
@@ -367,7 +385,7 @@ internal static class SettingsPanelUI
 			Func<float> item8 = item13.Item2;
 			Action<float> item9 = item13.Item3;
 			float item10 = item13.Item4;
-			float x3 = ((num2 == 0) ? (-488) : 18);
+			float x3 = ((num2 == 0) ? (-253) : 253);
 			float y3 = 240 - num * 38;
 			AddFloatRow(_page2.transform, item7, item8, item9, item10, new Vector2(x3, y3));
 			num++;
@@ -423,7 +441,10 @@ internal static class SettingsPanelUI
 		text.fontSize = fontSize;
 		text.color = Color.white;
 		text.alignment = anchor;
-		text.text = content;
+		text.resizeTextForBestFit = true;
+		text.resizeTextMinSize = Math.Min(11, fontSize);
+		text.resizeTextMaxSize = fontSize;
+		ModText.Bind(text, content);
 		return text;
 	}
 
@@ -466,7 +487,7 @@ internal static class SettingsPanelUI
 		});
 		BoolBindings.Add((toggle, entry));
         var text = NewText(gameObject.transform, label, 14, new Vector2(-5f, 0f), new Vector2(400f, 30f), TextAnchor.MiddleLeft);
-        if (pricing) LabelBindings.Add((text, () => BetterSupermarketPlugin.AutoPricingUnlocked ? label : label + "（需 MART OS 2.0）"));
+        if (pricing) LabelBindings.Add((text, () => ModText.Get(label) + (BetterSupermarketPlugin.AutoPricingUnlocked ? "" : ModText.Get("（需 MART OS 2.0）"))));
 	}
 
     private static bool IsPricingSetting(ConfigEntry<bool> entry) =>

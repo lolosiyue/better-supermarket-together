@@ -77,6 +77,15 @@ internal sealed class EmployeeNavigation
         return distance <= reach;
     }
 
+    internal bool IsNear(Vector3 destination,float range)
+    {
+        if(!Ready || Vector3.Distance(_agent.transform.position,destination)>range || !TrySample(destination,out var point) ||
+            !NavMesh.CalculatePath(_agent.nextPosition,point,Filter,_path) || _path.status!=NavMeshPathStatus.PathComplete)return false;
+        float length=0;var corners=_path.corners;
+        for(int i=1;i<corners.Length;i++)length+=Vector3.Distance(corners[i-1],corners[i]);
+        return length<=range;
+    }
+
     internal static void Block(NPC_Info employee, Vector3 destination)
     {
         var history = Histories.GetValue(employee, _ => new History());

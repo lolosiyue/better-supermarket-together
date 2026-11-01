@@ -2,7 +2,15 @@
 
 [English](README.en.md) · 繁體中文
 
+**1.4.1：統一同伴文字翻譯。** 工作狀態、錯誤、步驟及 cache 標籤使用共用中英翻譯表；新執行紀錄亦能隨語言切換，任務判斷與顯示文字分開。詳見 [同伴文字說明](docs/COMPANION-LOCALIZATION.md)。
+
+**1.4.0：同伴自主排工、指定商品／貨架補貨、跟隨房主及順序任務。** F7 可切換自主工作、查看計畫、停止計畫及選取準星所指貨架；自然語言可要求「補滿這個貨架，再去收銀」。自主模式需每次進商店後開啟，預設最短 120 秒評估一次、每小時最多 20 次決策。詳見 [工作計畫說明](docs/DEEPSEEK-WORK-PLANS.md)。
+
+**1.3.2：改善 DeepSeek 前綴快取並加入實際用量統計。** 固定角色／規則／工具、保留原始工具對話，F7 可查看 cache hit／miss、命中率及延遲。詳見 [快取說明與實測](docs/DEEPSEEK-CACHE.md)。
+
 為 **Supermarket Together** 製作的 BepInEx 5 生活品質插件，集中處理自動補貨、生產、倉庫整理、定價、促銷、清潔及員工管理。前身為 **AutoRestock2230**。
+
+**1.3.1：修正 DeepSeek 員工同伴外觀。** 支援遊戲七種員工的 Generic Bip01 骨架，模型未就緒時會自動重試。按 F7 綁定一名員工、設定 API，便可文字聊天、記住偏好並用自然語言變更工作。隨附具獨立非商業授權的 DeepSeek 娘 3D 模型。完整設定、能力限制與驗證狀態見 [同伴說明](docs/DEEPSEEK-COMPANION.md)。
 
 本 MOD **固定只有房主可使用**，單人遊戲也屬於房主。其他玩家不需安裝；即使安裝，加入別人的房間時也不會啟用自動化、插件介面、快捷鍵或翻譯覆蓋。房主修改的遊戲狀態仍透過遊戲原生多人同步傳給其他玩家。
 
@@ -27,6 +35,7 @@
 | 清潔機器人巡邏 | 沒有垃圾時在店內巡邏，重新尋找附近尚未被認領的垃圾；巡邏半徑可調整。 |
 | 繁體中文修正 | 附帶繁中覆蓋字串表，修正部分遊戲內的翻譯。僅在遊戲語言為中文時套用。 |
 | 遊戲內設定與狀態 | 管理看板的插件按鈕、F10 設定面板、F8 狀態列、F9 狀態報告及 F11 診斷日誌。 |
+| 中英文介面 | 設定、按鈕、庫存分類、員工與生產提示支援英文及繁體中文；預設跟隨遊戲語言，亦可在 F10 手動切換，立即生效。 |
 
 ## 普通商品與生產部的流程
 
@@ -62,9 +71,12 @@
 
 ## 使用與快捷鍵
 
+在 **F10 → 介面語言** 可輪流選擇 `Auto`、`English` 或 `TraditionalChinese`。自動模式在遊戲使用中文時顯示繁體中文，其他語言使用英文。介面語言與隨機姓名風格各自設定；切換介面不會改名，也不會改寫聊天與記憶內容。
+
 | 入口 | 功能 |
 | --- | --- |
 | 管理看板 → 插件，或 F10 | 開關設定面板；第 1 頁為主要設定，第 2 頁為分類庫存門檻。 |
+| F7，或 F10 → DeepSeek 同伴 | 綁定員工、聊天、記憶、API、自主工作、工作計畫及指向貨架；首次需自行填入金鑰。 |
 | F10 → 員工改名 → 隨機風格 | 切換 `中文 / Chinese` 與 `英文 / English`，再點個別「隨機」或「全部隨機改名」。切換風格本身不會更改員工名字。 |
 | F8 | 開關左上角狀態列。 |
 | F9 | 顯示完整狀態報告。 |
@@ -91,6 +103,13 @@ BepInEx/config/local.supermarkettogether.autorestock2230.cfg
 ```
 
 大部分常用設定可以直接在遊戲內修改。若手動編輯設定檔，先關閉遊戲。
+
+設定檔的各項說明同時提供英文及中文。若要固定使用英文介面：
+
+```ini
+[Localization]
+UILanguage = English
+```
 
 例如，將隨機名字改為英文並自訂名字池：
 
@@ -140,7 +159,7 @@ NeutralEnglishNames = Alex Morgan,Taylor Reed,Jordan Parker
 ./package.ps1 -GameDir 'D:\SteamLibrary\steamapps\common\Supermarket Together'
 ```
 
-`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.2.10.zip`。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
+`build.ps1` 編譯 Release；`package.ps1` 會先編譯再產生 `artifacts/BetterSupermarketTogether-1.3.2.zip`。完整打包前執行 `download-model.ps1` 取得固定雜湊的模型及保留隨附署名條款。也可以設定環境變數 `SUPERMARKET_TOGETHER_DIR`，或直接傳入 `dotnet build -c Release -p:GameDir="遊戲路徑"`。
 
 ## 使用範圍與目前狀態
 

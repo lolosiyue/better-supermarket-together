@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.2.10")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.4.1")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,9 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.2.10";
+	public const string PluginVersion = "1.4.1";
+
+    internal DeepSeekCompanion Companion { get; private set; }
 
 	internal static ManualLogSource Log;
 
@@ -233,7 +235,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private int _promoLastDay = -1;
 
-	internal string LastStaffPurchaseMessage = "";
+	internal ModText.Message LastStaffPurchaseMessage = "";
 
 	internal static bool EnablePlugin
 	{
@@ -345,81 +347,83 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	{
 		Instance = this;
 		Log = Logger;
-		_enable = Config.Bind("General", "Enable", defaultValue: true, "啟用 Better Supermarket Together (true/false)");
-		Config.Bind("General", "OnlyHost", defaultValue: true, "固定僅房主執行；此舊版設定保留相容，設為 false 也不會解除限制。").Value = true;
-		_notifications = Config.Bind("General", "Notifications", defaultValue: true, "下單時在遊戲內顯示通知");
-		_autoOpenOrderDepartment = Config.Bind("General", "AutoOpenOrderDepartment", defaultValue: true, "開業(超市開門)時自動開啟訂單部。遊戲內建的自動開啟按鈕不會存檔(每次讀檔重置)，此功能不依賴它。");
-		_orderAfterHour = Config.Bind("Timing", "OrderAfterHour", 22.5f, new ConfigDescription("幾點後開始自動補貨 (22.5 = 22:30 遊戲時間)", new AcceptableValueRange<float>(0f, 24f)));
-		_stopBeforeHour = Config.Bind("Timing", "StopBeforeHour", 23.9f, new ConfigDescription("幾點後停止下單 (避免跨日邊界，23.9 = 23:54)", new AcceptableValueRange<float>(0f, 24f)));
-		_checkIntervalSeconds = Config.Bind("Safety", "CheckIntervalSeconds", 10f, new ConfigDescription("每隔幾秒(現實時間)檢查一次倉庫", new AcceptableValueRange<float>(2f, 120f)));
-		_zeroConfirmScans = Config.Bind("Safety", "ZeroConfirmScans", 2, new ConfigDescription("倉庫+箱子連續幾次檢查都是 0 才判定為真的缺貨（防止 NPC 搬運瞬間的誤判）", new AcceptableValueRange<int>(1, 10)));
-		_onlySeenProducts = Config.Bind("Safety", "OnlySeenProducts", defaultValue: true, "只自動補「當天有出現在任何地方(貨架/倉庫/箱子)」的產品，避免把已解鎖但沒在賣的產品也訂一遍");
-		_requireLowShelves = Config.Bind("Safety", "RequireLowShelves", defaultValue: false, "開啟後：除了倉庫為 0，還要求貨架上該產品低於 ShelfThreshold 才下單");
-		_shelfThreshold = Config.Bind("Safety", "ShelfThreshold", 10, new ConfigDescription("RequireLowShelves 開啟時使用的貨架存量門檻", new AcceptableValueRange<int>(0, 100000)));
-		_includeProductionStock = Config.Bind("Safety", "IncludeProductionStock", defaultValue: true, "把工作台托盤內的一般商品原料納入缺貨判斷；生產成品使用不同編號，不算入一般商品庫存");
-		_boxesPerProduct = Config.Bind("Order", "BoxesPerProduct", 1, new ConfigDescription("每個缺貨產品一次訂幾箱", new AcceptableValueRange<int>(1, 20)));
-		_maxOrdersPerProductPerNight = Config.Bind("Order", "MaxOrdersPerProductPerNight", 1, new ConfigDescription("每個產品一晚最多自動下單幾次", new AcceptableValueRange<int>(1, 20)));
-		_reorderCooldownSeconds = Config.Bind("Order", "ReorderCooldownSeconds", 300f, new ConfigDescription("同一產品兩次自動下單的最小間隔（現實秒）", new AcceptableValueRange<float>(30f, 3600f)));
-		_fundsBuffer = Config.Bind("Order", "FundsBuffer", 0f, new ConfigDescription("下單後遊戲資金至少要剩下多少才會下單", new AcceptableValueRange<float>(0f, 1000000f)));
-		_daytimeEnable = Config.Bind("Daytime", "Enable", defaultValue: true, "日間模式：到 StartHour 就開始自動補貨（預設不再要求已開業，早上開業前也會補貨）");
-		_daytimeOnlyWhenOpen = Config.Bind("Daytime", "OnlyWhenOpen", defaultValue: false, "改回舊行為：設為 true 時，日間模式只在超市實際開門營業期間運作");
-		_daytimeStartHour = Config.Bind("Daytime", "StartHour", 8f, new ConfigDescription("營業模式幾點後開始下單 (遊戲一天從 8:00 開始)", new AcceptableValueRange<float>(0f, 24f)));
-		_daytimeEndHour = Config.Bind("Daytime", "EndHour", 22f, new ConfigDescription("營業模式幾點後停止 (遊戲 22:30 自動關店)", new AcceptableValueRange<float>(0f, 24f)));
-		_daytimeMaxOrdersPerProductPerDay = Config.Bind("Daytime", "MaxOrdersPerProductPerDay", 2, new ConfigDescription("營業模式：每個產品一天最多自動下單幾次", new AcceptableValueRange<int>(1, 20)));
-		_daytimeReorderCooldownSeconds = Config.Bind("Daytime", "ReorderCooldownSeconds", 600f, new ConfigDescription("營業模式：同一產品兩次自動下單的最小間隔（現實秒）", new AcceptableValueRange<float>(30f, 3600f)));
-		_daytimeRequireLowShelves = Config.Bind("Daytime", "RequireLowShelves", defaultValue: false, "營業模式額外條件：貨架上該產品低於 DaytimeShelfThreshold 才下單（想省錢可開啟）");
-		_daytimeShelfThreshold = Config.Bind("Daytime", "ShelfThreshold", 100, new ConfigDescription("營業模式 RequireLowShelves 使用的貨架存量門檻", new AcceptableValueRange<int>(0, 100000)));
-		_pricingEnable = Config.Bind("Pricing", "Enable", defaultValue: true, "需先解鎖 MART OS 2.0 才會自動定價：每天定時把所有已解鎖產品的售價設為「成本價 × Percentage%」，跟隨進貨成本調整。");
-		_pricingUpdateHour = Config.Bind("Pricing", "UpdateHour", 8f, new ConfigDescription("每天幾點更新定價 (遊戲一天從 8:00 開始)", new AcceptableValueRange<float>(0f, 24f)));
-		_pricingPercentage = Config.Bind("Pricing", "Percentage", 200, new ConfigDescription("售價 = 成本價 × (Percentage/100)。客人最高只接受成本的約 201%~250%(隨機)，200% = 不會被嫌貴的最高價", new AcceptableValueRange<int>(50, 250)));
-		_pricingRoundDown = Config.Bind("Pricing", "RoundDown", defaultValue: false, "開啟後價格取到小數 1 位(如 $2.4)，關閉取到小數 2 位(如 $2.47)");
-		_promoEnable = Config.Bind("Promo", "Enable", defaultValue: true, "自動促銷：每天定時把「總庫存最多」的產品放上促銷。遊戲的促銷每天結束時自動重置、無法手動取消，所以隔天會重新選。");
-		_promoHour = Config.Bind("Promo", "Hour", 8f, new ConfigDescription("每天幾點掛促銷", new AcceptableValueRange<float>(0f, 24f)));
-		_promoDiscount = Config.Bind("Promo", "Discount", 15, new ConfigDescription("促銷折扣 %(遊戲限制 5~45)", new AcceptableValueRange<int>(5, 45)));
-		_promoMinStock = Config.Bind("Promo", "MinStock", 50, new ConfigDescription("總庫存(貨架+倉庫+箱子+生產部)至少多少才考慮促銷，避免把快賣完的產品打折", new AcceptableValueRange<int>(0, 100000)));
-		_promoUseSalesRate = Config.Bind("Promo", "UseSalesRate", defaultValue: true, "進階促銷：用最近兩次評估的平均日銷量計算「庫存 ÷ (日銷+1)」抓滯銷品（庫存高＋賣得慢優先）；無銷量資料時自動退回純庫存模式。");
-		_smartRestock = Config.Bind("Restock", "SmartRestock", defaultValue: true, "聰明補貨：優先處理缺貨比例高的貨架、清空剩量較少的箱子；同一貨架同時只派一名員工，轉架時也重新檢查占用，沒有空閒任務則等待。");
-		_warehouseGroupPlacement = Config.Bind("Warehouse", "GroupPlacement", defaultValue: true, "入倉集中擺放：NPC 放箱入倉時，優先放進「已經有同產品」的倉庫架（就近者優先），不再塞進最近的任意空位散落各架。");
-		_warehouseConsolidate = Config.Bind("Warehouse", "NightlyConsolidate", defaultValue: true, "夜間整理：打烊後自動把散落在其他架的同產品箱子搬回「該產品最多的那個架」（純資料搬移，走遊戲自己的同步路徑，實體外觀和標籤自動對帳）。");
-		_warehouseConsolidateHour = Config.Bind("Warehouse", "ConsolidateHour", 23f, new ConfigDescription("幾點執行夜間整理 (預設 23:00，打烊後)", new AcceptableValueRange<float>(0f, 24f)));
-		_warehouseConsolidateMoves = Config.Bind("Warehouse", "ConsolidateMovesPerNight", 30, new ConfigDescription("每晚最多整理幾個箱子（避免一次大搬風暴）", new AcceptableValueRange<int>(1, 200)));
-		_i18nOverhaul = Config.Bind("Localization", "OverhaulChinese", defaultValue: true, "繁中本地化修正：以英文原文為準重新翻譯的繁中字串表，覆蓋遊戲內建的機翻（含烏克蘭文殘留）。僅在遊戲語言為中文時生效。");
-		_productionAutoQueue = Config.Bind("Production", "AutoQueueProducts", defaultValue: true, "生產部成品存量達到 AutoQueueThreshold 門檻時，自動在工作台排程已知配方，使用生產員工生產。");
-        _productionOnlyShelfRecipes = Config.Bind("Production", "OnlyShelfRecipes", true, "只自動補目前銷售貨架指定的配方（空貨架保留的配方也算）。舊箱子及歷史配方只計庫存，不會單獨觸發補產；false 則補所有歷史配方。");
-		_learnedCombinables = Config.Bind("Production", "LearnedCombinables", "", "已學習的客製配方（自動維護，請勿手改）——讓自動排程照你用過的配方生產。");
-		_knownVariants = Config.Bind("Production", "KnownVariants", "", "已知配方變體（自動維護，請勿手改）——每個成品變體的配方標籤，重啟後自動排程仍照配方做。");
+		ModText.Initialize(Config);
+		_enable = Config.Bind("General", "Enable", defaultValue: true, ModText.Description("啟用 Better Supermarket Together (true/false)", "Enable Better Supermarket Together."));
+		Config.Bind("General", "OnlyHost", defaultValue: true, ModText.Description("固定僅房主執行；此舊版設定保留相容，設為 false 也不會解除限制。", "Always host-only. This legacy compatibility setting cannot enable the mod on joining clients.")).Value = true;
+		_notifications = Config.Bind("General", "Notifications", defaultValue: true, ModText.Description("下單時在遊戲內顯示通知", "Show in-game notifications for automatic orders."));
+		_autoOpenOrderDepartment = Config.Bind("General", "AutoOpenOrderDepartment", defaultValue: true, ModText.Description("開業(超市開門)時自動開啟訂單部。遊戲內建的自動開啟按鈕不會存檔(每次讀檔重置)，此功能不依賴它。", "Open the unlocked order department when the store opens, independently of the native toggle that resets on load."));
+		_orderAfterHour = Config.Bind("Timing", "OrderAfterHour", 22.5f, new ConfigDescription(ModText.Description("幾點後開始自動補貨 (22.5 = 22:30 遊戲時間)", "Start nighttime automatic orders at this in-game hour (22.5 = 22:30)."), new AcceptableValueRange<float>(0f, 24f)));
+		_stopBeforeHour = Config.Bind("Timing", "StopBeforeHour", 23.9f, new ConfigDescription(ModText.Description("幾點後停止下單 (避免跨日邊界，23.9 = 23:54)", "Stop nighttime orders at this hour to avoid crossing midnight (23.9 = 23:54)."), new AcceptableValueRange<float>(0f, 24f)));
+		_checkIntervalSeconds = Config.Bind("Safety", "CheckIntervalSeconds", 10f, new ConfigDescription(ModText.Description("每隔幾秒(現實時間)檢查一次倉庫", "Real-time seconds between inventory scans."), new AcceptableValueRange<float>(2f, 120f)));
+		_zeroConfirmScans = Config.Bind("Safety", "ZeroConfirmScans", 2, new ConfigDescription(ModText.Description("倉庫+箱子連續幾次檢查都是 0 才判定為真的缺貨（防止 NPC 搬運瞬間的誤判）", "Consecutive empty-reserve scans required to confirm a shortage during employee handling."), new AcceptableValueRange<int>(1, 10)));
+		_onlySeenProducts = Config.Bind("Safety", "OnlySeenProducts", defaultValue: true, ModText.Description("只自動補「當天有出現在任何地方(貨架/倉庫/箱子)」的產品，避免把已解鎖但沒在賣的產品也訂一遍", "Only order products seen today on shelves, in storage or in ordinary boxes. Avoid ordering every unlocked product."));
+		_requireLowShelves = Config.Bind("Safety", "RequireLowShelves", defaultValue: false, ModText.Description("開啟後：除了倉庫為 0，還要求貨架上該產品低於 ShelfThreshold 才下單", "Also require sales-shelf stock below ShelfThreshold before ordering."));
+		_shelfThreshold = Config.Bind("Safety", "ShelfThreshold", 10, new ConfigDescription(ModText.Description("RequireLowShelves 開啟時使用的貨架存量門檻", "Sales-shelf stock threshold when RequireLowShelves is enabled."), new AcceptableValueRange<int>(0, 100000)));
+		_includeProductionStock = Config.Bind("Safety", "IncludeProductionStock", defaultValue: true, ModText.Description("把工作台托盤內的一般商品原料納入缺貨判斷；生產成品使用不同編號，不算入一般商品庫存", "Count ordinary ingredients on workbench trays. Manufactured-product IDs are separate and never count as ordinary stock."));
+		_boxesPerProduct = Config.Bind("Order", "BoxesPerProduct", 1, new ConfigDescription(ModText.Description("每個缺貨產品一次訂幾箱", "Boxes to buy per missing product in each order."), new AcceptableValueRange<int>(1, 20)));
+		_maxOrdersPerProductPerNight = Config.Bind("Order", "MaxOrdersPerProductPerNight", 1, new ConfigDescription(ModText.Description("每個產品一晚最多自動下單幾次", "Maximum automatic orders per product per night."), new AcceptableValueRange<int>(1, 20)));
+		_reorderCooldownSeconds = Config.Bind("Order", "ReorderCooldownSeconds", 300f, new ConfigDescription(ModText.Description("同一產品兩次自動下單的最小間隔（現實秒）", "Minimum real-time seconds between orders for the same product."), new AcceptableValueRange<float>(30f, 3600f)));
+		_fundsBuffer = Config.Bind("Order", "FundsBuffer", 0f, new ConfigDescription(ModText.Description("下單後遊戲資金至少要剩下多少才會下單", "Minimum money to retain after placing an order."), new AcceptableValueRange<float>(0f, 1000000f)));
+		_daytimeEnable = Config.Bind("Daytime", "Enable", defaultValue: true, ModText.Description("日間模式：到 StartHour 就開始自動補貨（預設不再要求已開業，早上開業前也會補貨）", "Enable daytime purchasing from StartHour, including before opening unless OnlyWhenOpen is enabled."));
+		_daytimeOnlyWhenOpen = Config.Bind("Daytime", "OnlyWhenOpen", defaultValue: false, ModText.Description("改回舊行為：設為 true 時，日間模式只在超市實際開門營業期間運作", "Restrict daytime purchasing to hours when the store is actually open."));
+		_daytimeStartHour = Config.Bind("Daytime", "StartHour", 8f, new ConfigDescription(ModText.Description("營業模式幾點後開始下單 (遊戲一天從 8:00 開始)", "Start daytime purchasing at this in-game hour (a day starts at 08:00)."), new AcceptableValueRange<float>(0f, 24f)));
+		_daytimeEndHour = Config.Bind("Daytime", "EndHour", 22f, new ConfigDescription(ModText.Description("營業模式幾點後停止 (遊戲 22:30 自動關店)", "Stop daytime purchasing at this in-game hour (the store closes at 22:30)."), new AcceptableValueRange<float>(0f, 24f)));
+		_daytimeMaxOrdersPerProductPerDay = Config.Bind("Daytime", "MaxOrdersPerProductPerDay", 2, new ConfigDescription(ModText.Description("營業模式：每個產品一天最多自動下單幾次", "Maximum daytime automatic orders per product per day."), new AcceptableValueRange<int>(1, 20)));
+		_daytimeReorderCooldownSeconds = Config.Bind("Daytime", "ReorderCooldownSeconds", 600f, new ConfigDescription(ModText.Description("營業模式：同一產品兩次自動下單的最小間隔（現實秒）", "Minimum real-time seconds between daytime orders for the same product."), new AcceptableValueRange<float>(30f, 3600f)));
+		_daytimeRequireLowShelves = Config.Bind("Daytime", "RequireLowShelves", defaultValue: false, ModText.Description("營業模式額外條件：貨架上該產品低於 DaytimeShelfThreshold 才下單（想省錢可開啟）", "Also require sales-shelf stock below the daytime ShelfThreshold before ordering."));
+		_daytimeShelfThreshold = Config.Bind("Daytime", "ShelfThreshold", 100, new ConfigDescription(ModText.Description("營業模式 RequireLowShelves 使用的貨架存量門檻", "Sales-shelf threshold used for daytime RequireLowShelves."), new AcceptableValueRange<int>(0, 100000)));
+		_pricingEnable = Config.Bind("Pricing", "Enable", defaultValue: true, ModText.Description("需先解鎖 MART OS 2.0 才會自動定價：每天定時把所有已解鎖產品的售價設為「成本價 × Percentage%」，跟隨進貨成本調整。", "Requires MART OS 2.0. Set unlocked product prices to current purchase cost multiplied by Percentage/100 at the scheduled time."));
+		_pricingUpdateHour = Config.Bind("Pricing", "UpdateHour", 8f, new ConfigDescription(ModText.Description("每天幾點更新定價 (遊戲一天從 8:00 開始)", "In-game hour for the daily pricing update."), new AcceptableValueRange<float>(0f, 24f)));
+		_pricingPercentage = Config.Bind("Pricing", "Percentage", 200, new ConfigDescription(ModText.Description("售價 = 成本價 × (Percentage/100)。客人最高只接受成本的約 201%~250%(隨機)，200% = 不會被嫌貴的最高價", "Selling price as a percentage of cost. Default 200; allowed range 50-250."), new AcceptableValueRange<int>(50, 250)));
+		_pricingRoundDown = Config.Bind("Pricing", "RoundDown", defaultValue: false, ModText.Description("開啟後價格取到小數 1 位(如 $2.4)，關閉取到小數 2 位(如 $2.47)", "Round prices to one decimal place when enabled, or two decimal places when disabled."));
+		_promoEnable = Config.Bind("Promo", "Enable", defaultValue: true, ModText.Description("自動促銷：每天定時把「總庫存最多」的產品放上促銷。遊戲的促銷每天結束時自動重置、無法手動取消，所以隔天會重新選。", "Select an eligible stocked product for a daily promotion. Native promotions reset at day end."));
+		_promoHour = Config.Bind("Promo", "Hour", 8f, new ConfigDescription(ModText.Description("每天幾點掛促銷", "In-game hour to select the daily promotion."), new AcceptableValueRange<float>(0f, 24f)));
+		_promoDiscount = Config.Bind("Promo", "Discount", 15, new ConfigDescription(ModText.Description("促銷折扣 %(遊戲限制 5~45)", "Promotion discount percentage (native range 5-45)."), new AcceptableValueRange<int>(5, 45)));
+		_promoMinStock = Config.Bind("Promo", "MinStock", 50, new ConfigDescription(ModText.Description("總庫存(貨架+倉庫+箱子+生產部)至少多少才考慮促銷，避免把快賣完的產品打折", "Minimum total ordinary stock for promotion eligibility, including shelves, warehouse, boxes and tray ingredients."), new AcceptableValueRange<int>(0, 100000)));
+		_promoUseSalesRate = Config.Bind("Promo", "UseSalesRate", defaultValue: true, ModText.Description("進階促銷：用最近兩次評估的平均日銷量計算「庫存 ÷ (日銷+1)」抓滯銷品（庫存高＋賣得慢優先）；無銷量資料時自動退回純庫存模式。", "Prefer slow-selling stock using stock/(average daily sales+1). Fall back to stock ranking when sales data is unavailable."));
+		_smartRestock = Config.Bind("Restock", "SmartRestock", defaultValue: true, ModText.Description("聰明補貨：優先處理缺貨比例高的貨架、清空剩量較少的箱子；同一貨架同時只派一名員工，轉架時也重新檢查占用，沒有空閒任務則等待。", "Prioritize low-stock shelves and smaller remaining boxes. Reserve each whole shelf for one employee; wait when all eligible tasks are claimed."));
+		_warehouseGroupPlacement = Config.Bind("Warehouse", "GroupPlacement", defaultValue: true, ModText.Description("入倉集中擺放：NPC 放箱入倉時，優先放進「已經有同產品」的倉庫架（就近者優先），不再塞進最近的任意空位散落各架。", "Prefer warehouse racks already holding the same product, choosing nearby compatible space."));
+		_warehouseConsolidate = Config.Bind("Warehouse", "NightlyConsolidate", defaultValue: true, ModText.Description("夜間整理：打烊後自動把散落在其他架的同產品箱子搬回「該產品最多的那個架」（純資料搬移，走遊戲自己的同步路徑，實體外觀和標籤自動對帳）。", "Consolidate matching boxes into their main warehouse rack after closing, using native game synchronization."));
+		_warehouseConsolidateHour = Config.Bind("Warehouse", "ConsolidateHour", 23f, new ConfigDescription(ModText.Description("幾點執行夜間整理 (預設 23:00，打烊後)", "In-game hour for nightly consolidation (default 23:00)."), new AcceptableValueRange<float>(0f, 24f)));
+		_warehouseConsolidateMoves = Config.Bind("Warehouse", "ConsolidateMovesPerNight", 30, new ConfigDescription(ModText.Description("每晚最多整理幾個箱子（避免一次大搬風暴）", "Maximum boxes to consolidate per night."), new AcceptableValueRange<int>(1, 200)));
+		_i18nOverhaul = Config.Bind("Localization", "OverhaulChinese", defaultValue: true, ModText.Description("繁中本地化修正：以英文原文為準重新翻譯的繁中字串表，覆蓋遊戲內建的機翻（含烏克蘭文殘留）。僅在遊戲語言為中文時生效。", "Apply the bundled Traditional Chinese translation corrections only when the game language is Chinese."));
+		_productionAutoQueue = Config.Bind("Production", "AutoQueueProducts", defaultValue: true, ModText.Description("生產部成品存量達到 AutoQueueThreshold 門檻時，自動在工作台排程已知配方，使用生產員工生產。", "Queue known recipes when finished reserve stock is at or below AutoQueueThreshold; native employees perform production."));
+        _productionOnlyShelfRecipes = Config.Bind("Production", "OnlyShelfRecipes", true, ModText.Description("只自動補目前銷售貨架指定的配方（空貨架保留的配方也算）。舊箱子及歷史配方只計庫存，不會單獨觸發補產；false 則補所有歷史配方。", "Only replenish recipes assigned to current sales shelves, including empty labeled shelves. False also targets historical recipes."));
+		_learnedCombinables = Config.Bind("Production", "LearnedCombinables", "", ModText.Description("已學習的客製配方（自動維護，請勿手改）——讓自動排程照你用過的配方生產。", "Automatically maintained learned custom recipes. Do not edit manually."));
+		_knownVariants = Config.Bind("Production", "KnownVariants", "", ModText.Description("已知配方變體（自動維護，請勿手改）——每個成品變體的配方標籤，重啟後自動排程仍照配方做。", "Automatically maintained recipe variant labels for persistent recipe-specific production. Do not edit manually."));
 		ProductionAutomation.LoadVariants = LoadLearnedVariants;
 		ProductionAutomation.PersistVariants = SaveLearnedVariants;
-		_productionAutoTray = Config.Bind("Production", "AutoFillTray", defaultValue: true, "自動從一般倉庫補入目前生產配方所需的基礎及客製原料。");
-		_productionQueueThreshold = Config.Bind("Production", "AutoQueueThreshold", 0, new ConfigDescription("成品最低備貨：成品倉庫＋地上／手持成品箱（不含銷售貨架）≤ 此值時補產；同配方已排程或製作中不重排", new AcceptableValueRange<int>(0, 10000)));
-		_cleanerPatrolEnabled = Config.Bind("Cleaner", "PatrolWhenIdle", defaultValue: true, "沒垃圾時機器人在店內巡邏，並每 0.33 秒動態搶最近的垃圾（原版會走回服務台待機）");
-		_cleanerPatrolRadius = Config.Bind("Cleaner", "PatrolRadius", 12f, new ConfigDescription("巡邏半徑（公尺，以服務台為中心）", new AcceptableValueRange<float>(3f, 40f)));
-		_gateOnIdleEmployee = Config.Bind("Restock", "GateOnIdleEmployee", defaultValue: true, "自動補貨前先看有沒有空閒的倉儲/補貨員工：沒有就先不下單（取代固定的下單冷卻）。");
-		_minOrderIntervalSeconds = Config.Bind("Restock", "MinOrderIntervalSeconds", 30f, new ConfigDescription("啟用員工閘門時，同一產品兩次自動下單的最小間隔（秒）", new AcceptableValueRange<float>(10f, 600f)));
-		_minTotalStockDefault = Config.Bind("Restock", "MinTotalStockDefault", 0, new ConfigDescription("一般產品的最低倉庫總量（倉庫+箱子+生產部）：低於此值自動購買（0 = 賣完才補）", new AcceptableValueRange<int>(0, 100000)));
-		_minTotalStockProduction = Config.Bind("Restock", "MinTotalStockProduction", 100, new ConfigDescription("生產部原料的最低倉庫總量門檻（確保生產線不斍）", new AcceptableValueRange<int>(0, 100000)));
-		_minTotalStockHygiene = Config.Bind("Restock", "MinTotalStockHygiene", 100, new ConfigDescription("紙巾/衛生/清潔類產品的最低倉庫總量門檻", new AcceptableValueRange<int>(0, 100000)));
-		_groupMinStock = Config.Bind("Restock", "GroupMinStock", "4:100,5:100", "分類最低庫存覆寫（格式 分類:數量,分類:數量；分類編號見 productGroup0-18，4=衛生 5=清潔）。未列出的分類使用 MinTotalStockDefault。設定面板第 2 頁可調。");
-		_extraSlotsPurchased = Config.Bind("Staff", "ExtraSlotsPurchased", 0, new ConfigDescription("已用金錢解鎖的額外員工上限數（自動維護，請勿手改）", new AcceptableValueRange<int>(0, 100)));
-		_extraSlotBaseCost = Config.Bind("Staff", "ExtraSlotBaseCost", 5000, new ConfigDescription("第 1 個額外員工上限的價格；之後每個遞增一倍基底（5000、10000、15000……）", new AcceptableValueRange<int>(100, 100000)));
-		_autoRename = Config.Bind("Naming", "AutoRenameEmployees", defaultValue: true, "載入存檔時，把所有員工 NPC 依「EmployeeNames」清單依序命名。");
-		_employeeNames = Config.Bind("Naming", "EmployeeNames", "小明,小華,小美,阿傑,小玲,大偉,小婷,阿強,小龍,阿珍,小玉,阿豪", "員工名稱清單（逗號分隔）；員工數超過清單時會加編號循環。");
-		_randomNameButton = Config.Bind("Naming", "RandomNameButton", defaultValue: true, "員工頁面每個員工名字旁顯示「改名」按鈕（隨機取名）＋「全部隨機改名」按鈕。");
-		_randomNames = Config.Bind("Naming", "RandomNames", "陳大明,林秀英,黃志豪,張雅婷,李文彬,王美玲,吳俊賢,劉怡芳,蔡明華,楊淑芬,謝金龍,何雅琴,高志偉,賴淑惠,潘文傑,姜美鳳,洪建宏,曾雅惠,曹志明,盧小燕,柯文謙,施雅婷,廖寶珠,鄧小鳳,許文龍,沈春梅,蘇麗華,唐國強,韓雪梅,鍾明軒,白雪娥,江文雄,方雅玲,馬俊賢,袁美鳳,宋小龍,范雅芬,徐志豪,柳淑芬,鄭文謙", "舊版混合中文名單（保留資料）；性別對應改用 MaleChineseNames、FemaleChineseNames、NeutralChineseNames。");
-        _randomNameStyle = Config.Bind("Naming", "RandomNameStyle", EmployeeNameStyle.Chinese, "隨機員工名字風格：Chinese（中文）或 English（英文）。可在 F10 → 員工改名切換。");
-        _englishRandomNames = Config.Bind("Naming", "EnglishRandomNames", DefaultEnglishNames, "舊版混合英文名單（保留資料）；性別對應改用 MaleEnglishNames、FemaleEnglishNames、NeutralEnglishNames。");
-        ChineseGenderNames[(int)EmployeeGender.Male] = Config.Bind("Naming", "MaleChineseNames", EmployeeNameCatalog.MaleChinese, "男性 NPC 的中文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。");
-        ChineseGenderNames[(int)EmployeeGender.Female] = Config.Bind("Naming", "FemaleChineseNames", EmployeeNameCatalog.FemaleChinese, "女性 NPC 的中文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。");
-        ChineseGenderNames[(int)EmployeeGender.Unknown] = Config.Bind("Naming", "NeutralChineseNames", EmployeeNameCatalog.NeutralChinese, "無法辨識 NPC 性別時使用的中性中文名字。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。");
-        EnglishGenderNames[(int)EmployeeGender.Male] = Config.Bind("Naming", "MaleEnglishNames", EmployeeNameCatalog.MaleEnglish, "男性 NPC 的英文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。");
-        EnglishGenderNames[(int)EmployeeGender.Female] = Config.Bind("Naming", "FemaleEnglishNames", EmployeeNameCatalog.FemaleEnglish, "女性 NPC 的英文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。");
-        EnglishGenderNames[(int)EmployeeGender.Unknown] = Config.Bind("Naming", "NeutralEnglishNames", EmployeeNameCatalog.NeutralEnglish, "無法辨識 NPC 性別時使用的中性英文名字。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。");
+		_productionAutoTray = Config.Bind("Production", "AutoFillTray", defaultValue: true, ModText.Description("自動從一般倉庫補入目前生產配方所需的基礎及客製原料。", "Automatically feed required base and custom ingredients from ordinary warehouse storage onto production trays."));
+		_productionQueueThreshold = Config.Bind("Production", "AutoQueueThreshold", 0, new ConfigDescription(ModText.Description("成品最低備貨：成品倉庫＋地上／手持成品箱（不含銷售貨架）≤ 此值時補產；同配方已排程或製作中不重排", "Replenish when same-recipe finished reserve (manufacturing warehouse plus ground/held boxes, excluding sales shelves) is at or below this value. Do not duplicate pending or active recipes."), new AcceptableValueRange<int>(0, 10000)));
+		_cleanerPatrolEnabled = Config.Bind("Cleaner", "PatrolWhenIdle", defaultValue: true, ModText.Description("沒垃圾時機器人在店內巡邏，並每 0.33 秒動態搶最近的垃圾（原版會走回服務台待機）", "Patrol when idle and seek nearby unclaimed trash every 0.33 seconds instead of returning to the service desk."));
+		_cleanerPatrolRadius = Config.Bind("Cleaner", "PatrolRadius", 12f, new ConfigDescription(ModText.Description("巡邏半徑（公尺，以服務台為中心）", "Patrol radius in metres, centred on the service desk."), new AcceptableValueRange<float>(3f, 40f)));
+		_gateOnIdleEmployee = Config.Bind("Restock", "GateOnIdleEmployee", defaultValue: true, ModText.Description("自動補貨前先看有沒有空閒的倉儲/補貨員工：沒有就先不下單（取代固定的下單冷卻）。", "Wait for an idle storage or restocking employee before buying goods; use the minimum order interval instead of the regular cooldown."));
+		_minOrderIntervalSeconds = Config.Bind("Restock", "MinOrderIntervalSeconds", 30f, new ConfigDescription(ModText.Description("啟用員工閘門時，同一產品兩次自動下單的最小間隔（秒）", "Minimum seconds between orders for the same product when the idle-employee gate is enabled."), new AcceptableValueRange<float>(10f, 600f)));
+		_minTotalStockDefault = Config.Bind("Restock", "MinTotalStockDefault", 0, new ConfigDescription(ModText.Description("一般產品的最低倉庫總量（倉庫+箱子+生產部）：低於此值自動購買（0 = 賣完才補）", "Minimum ordinary reserve stock (warehouse, boxes and optional tray ingredients; excludes sales shelves). Zero orders only after reserve runs out."), new AcceptableValueRange<int>(0, 100000)));
+		_minTotalStockProduction = Config.Bind("Restock", "MinTotalStockProduction", 100, new ConfigDescription(ModText.Description("生產部原料的最低倉庫總量門檻（確保生產線不斍）", "Minimum reserve stock for all production ingredients; use the higher of this and the category minimum."), new AcceptableValueRange<int>(0, 100000)));
+		_minTotalStockHygiene = Config.Bind("Restock", "MinTotalStockHygiene", 100, new ConfigDescription(ModText.Description("紙巾/衛生/清潔類產品的最低倉庫總量門檻", "Minimum reserve stock for hygiene and cleaning products."), new AcceptableValueRange<int>(0, 100000)));
+		_groupMinStock = Config.Bind("Restock", "GroupMinStock", "4:100,5:100", ModText.Description("分類最低庫存覆寫（格式 分類:數量,分類:數量；分類編號見 productGroup0-18，4=衛生 5=清潔）。未列出的分類使用 MinTotalStockDefault。設定面板第 2 頁可調。", "Category reserve overrides: category:quantity,category:quantity. Groups are productGroup0-18 (4 hygiene, 5 cleaning). Unlisted groups use MinTotalStockDefault. Adjustable on settings page 2."));
+		_extraSlotsPurchased = Config.Bind("Staff", "ExtraSlotsPurchased", 0, new ConfigDescription(ModText.Description("已用金錢解鎖的額外員工上限數（自動維護，請勿手改）", "Automatically maintained number of purchased extra employee slots. Do not edit manually."), new AcceptableValueRange<int>(0, 100)));
+		_extraSlotBaseCost = Config.Bind("Staff", "ExtraSlotBaseCost", 5000, new ConfigDescription(ModText.Description("第 1 個額外員工上限的價格；之後每個遞增一倍基底（5000、10000、15000……）", "Base cost of the first extra employee slot. Later slots cost base times slot number (5000, 10000, 15000...)."), new AcceptableValueRange<int>(100, 100000)));
+		_autoRename = Config.Bind("Naming", "AutoRenameEmployees", defaultValue: true, ModText.Description("載入存檔時，把所有員工 NPC 依「EmployeeNames」清單依序命名。", "Assign the EmployeeNames list sequentially when loading, except employees whose names have been explicitly chosen."));
+		_employeeNames = Config.Bind("Naming", "EmployeeNames", "小明,小華,小美,阿傑,小玲,大偉,小婷,阿強,小龍,阿珍,小玉,阿豪", ModText.Description("員工名稱清單（逗號分隔）；員工數超過清單時會加編號循環。", "Comma-separated default employee names. Add numbered cycles when employee count exceeds the list."));
+		_randomNameButton = Config.Bind("Naming", "RandomNameButton", defaultValue: true, ModText.Description("員工頁面每個員工名字旁顯示「改名」按鈕（隨機取名）＋「全部隨機改名」按鈕。", "Show individual random-name buttons and a bulk randomize button on the employee pages."));
+		_randomNames = Config.Bind("Naming", "RandomNames", "陳大明,林秀英,黃志豪,張雅婷,李文彬,王美玲,吳俊賢,劉怡芳,蔡明華,楊淑芬,謝金龍,何雅琴,高志偉,賴淑惠,潘文傑,姜美鳳,洪建宏,曾雅惠,曹志明,盧小燕,柯文謙,施雅婷,廖寶珠,鄧小鳳,許文龍,沈春梅,蘇麗華,唐國強,韓雪梅,鍾明軒,白雪娥,江文雄,方雅玲,馬俊賢,袁美鳳,宋小龍,范雅芬,徐志豪,柳淑芬,鄭文謙", ModText.Description("舊版混合中文名單（保留資料）；性別對應改用 MaleChineseNames、FemaleChineseNames、NeutralChineseNames。", "Legacy mixed Chinese name list retained for compatibility. Gender-matched pools use MaleChineseNames, FemaleChineseNames and NeutralChineseNames."));
+        _randomNameStyle = Config.Bind("Naming", "RandomNameStyle", EmployeeNameStyle.Chinese, ModText.Description("隨機員工名字風格：Chinese（中文）或 English（英文）。可在 F10 → 員工改名切換。", "Random employee name style: Chinese or English. Switch in F10 > Employee names. Independent of UI language."));
+        _englishRandomNames = Config.Bind("Naming", "EnglishRandomNames", DefaultEnglishNames, ModText.Description("舊版混合英文名單（保留資料）；性別對應改用 MaleEnglishNames、FemaleEnglishNames、NeutralEnglishNames。", "Legacy mixed English name list retained for compatibility. Use the separate male, female and neutral English lists."));
+        ChineseGenderNames[(int)EmployeeGender.Male] = Config.Bind("Naming", "MaleChineseNames", EmployeeNameCatalog.MaleChinese, ModText.Description("男性 NPC 的中文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。", "Male Chinese names, comma-separated, maximum 25 characters. Legacy defaults use the expanded pool; custom names take priority, then matching built-in names without duplicate full names."));
+        ChineseGenderNames[(int)EmployeeGender.Female] = Config.Bind("Naming", "FemaleChineseNames", EmployeeNameCatalog.FemaleChinese, ModText.Description("女性 NPC 的中文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。", "Female Chinese names, comma-separated, maximum 25 characters. Legacy defaults use the expanded pool; custom names take priority, then matching built-in names without duplicate full names."));
+        ChineseGenderNames[(int)EmployeeGender.Unknown] = Config.Bind("Naming", "NeutralChineseNames", EmployeeNameCatalog.NeutralChinese, ModText.Description("無法辨識 NPC 性別時使用的中性中文名字。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。", "Neutral Chinese names for unidentified NPC gender. Custom names take priority, then matching expanded names without duplicate full names."));
+        EnglishGenderNames[(int)EmployeeGender.Male] = Config.Bind("Naming", "MaleEnglishNames", EmployeeNameCatalog.MaleEnglish, ModText.Description("男性 NPC 的英文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。", "Male English names, comma-separated, maximum 25 characters. Legacy defaults use the expanded pool; custom names take priority, then matching built-in names without duplicate full names."));
+        EnglishGenderNames[(int)EmployeeGender.Female] = Config.Bind("Naming", "FemaleEnglishNames", EmployeeNameCatalog.FemaleEnglish, ModText.Description("女性 NPC 的英文隨機名字（逗號分隔，最多 25 字）。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。", "Female English names, comma-separated, maximum 25 characters. Legacy defaults use the expanded pool; custom names take priority, then matching built-in names without duplicate full names."));
+        EnglishGenderNames[(int)EmployeeGender.Unknown] = Config.Bind("Naming", "NeutralEnglishNames", EmployeeNameCatalog.NeutralEnglish, ModText.Description("無法辨識 NPC 性別時使用的中性英文名字。 舊預設清單會自動使用擴充組合池；自訂名字優先，用完後由同風格／性別內建池補足，不重複全名。", "Neutral English names for unidentified NPC gender. Custom names take priority, then matching expanded names without duplicate full names."));
 
-		_showOverlay = Config.Bind("Overlay", "ShowStatusOverlay", defaultValue: true, "在畫面左上角常駐顯示插件狀態列（F8 可隨時開關）");
-		_overlayToggleKey = Config.Bind("Overlay", "ToggleKey", new KeyboardShortcut(KeyCode.F8), "開關狀態列的快速鍵");
-		_statusReportKey = Config.Bind("Overlay", "StatusReportKey", new KeyboardShortcut(KeyCode.F9), "在遊戲內彈出完整狀態報告的快速鍵");
-		_panelKey = Config.Bind("Overlay", "SettingsPanelKey", new KeyboardShortcut(KeyCode.F10), "開關插件設定面板的快速鍵（看板按鈕列也有「插件設定」）");
-		_diagKey = Config.Bind("Overlay", "DiagnosticsKey", new KeyboardShortcut(KeyCode.F11), "F11：把遊戲內真實狀態（員工資料/上限/配方變體/庫存）倒進 LogOutput.log 供診斷");
+		_showOverlay = Config.Bind("Overlay", "ShowStatusOverlay", defaultValue: true, ModText.Description("在畫面左上角常駐顯示插件狀態列（F8 可隨時開關）", "Show the mod status overlay in the upper-left corner. Toggle with F8."));
+		_overlayToggleKey = Config.Bind("Overlay", "ToggleKey", new KeyboardShortcut(KeyCode.F8), ModText.Description("開關狀態列的快速鍵", "Keyboard shortcut to toggle the status overlay."));
+		_statusReportKey = Config.Bind("Overlay", "StatusReportKey", new KeyboardShortcut(KeyCode.F9), ModText.Description("在遊戲內彈出完整狀態報告的快速鍵", "Keyboard shortcut to show the full in-game status report."));
+		_panelKey = Config.Bind("Overlay", "SettingsPanelKey", new KeyboardShortcut(KeyCode.F10), ModText.Description("開關插件設定面板的快速鍵（看板按鈕列也有「插件設定」）", "Keyboard shortcut to open mod settings. Also available from the manager board Mods button."));
+		_diagKey = Config.Bind("Overlay", "DiagnosticsKey", new KeyboardShortcut(KeyCode.F11), ModText.Description("F11：把遊戲內真實狀態（員工資料/上限/配方變體/庫存）倒進 LogOutput.log 供診斷", "Write employee, capacity, recipe and inventory diagnostics to LogOutput.log (default F11)."));
+        Companion = new DeepSeekCompanion(this, Config);
 		new Harmony("local.supermarkettogether.autorestock2230").PatchAll();
 		try
 		{
@@ -430,7 +434,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		{
 			Log.LogWarning("i18n load failed: " + ex.Message);
 		}
-		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", "1.2.10", _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
+		Log.LogInfo(string.Format("{0} {1} loaded. Night window {2:0.#}-{3:0.#}, daytime mode {4} (store open hours).", "Better Supermarket Together", PluginVersion, _orderAfterHour.Value, _stopBeforeHour.Value, _daytimeEnable.Value ? "ON" : "OFF"));
 	}
 
 	private void Update()
@@ -444,12 +448,13 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         if (_hostGame != GameData.Instance) ResetHostSession();
         _hostGame = GameData.Instance;
         _hostSessionActive = true;
+        Companion?.Tick();
 		if (flag && !_loadAnnounced)
 		{
 			_loadAnnounced = true;
 			if (_notifications.Value)
 			{
-				PendingNotification = "`Better Supermarket Together v1.2.10 已載入（F8 狀態列、F9 詳細狀態）";
+				PendingNotification = ModText.Format("`Better Supermarket Together v{0} 已載入（F8 狀態列、F9 詳細狀態、F10 設定）", PluginVersion);
 			}
 		}
 		if (!_extraSlotsApplied)
@@ -490,19 +495,19 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			ApplyExtraEmployeeSlots(NPC_Manager.Instance);
 			SettingsPanelUI.EnsureBoardButton();
 		}
-		if (_panelKey.Value.IsDown())
+		if (_panelKey.Value.IsDown() && !SettingsPanelUI.Typing)
 		{
 			SettingsPanelUI.TogglePanel();
 		}
-		if (_diagKey.Value.IsDown() & flag)
+		if (_diagKey.Value.IsDown() && flag && !SettingsPanelUI.Typing)
 		{
 			DumpDiagnostics(GameData.Instance);
 		}
-		if (_overlayToggleKey.Value.IsDown())
+		if (_overlayToggleKey.Value.IsDown() && !SettingsPanelUI.Typing)
 		{
 			_showOverlay.Value = !_showOverlay.Value;
 		}
-		if (_statusReportKey.Value.IsDown() & flag)
+		if (_statusReportKey.Value.IsDown() && flag && !SettingsPanelUI.Typing)
 		{
 			PendingNotification = "`" + BuildStatusText().Replace("\n", "  |  ");
 		}
@@ -612,6 +617,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         PendingNotification = null;
         if (!_hostSessionActive) return;
         _hostSessionActive = false;
+        Companion?.Reset();
         _hostGame = null;
         _hostSessionGeneration++;
         _loadAnnounced = _renamedThisSession = _extraSlotsApplied = _ordering = false;
@@ -625,6 +631,8 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         ProductionAutomation.Reset();
         SettingsPanelUI.ResetForSceneChange();
     }
+
+    private void OnDestroy() => Companion?.Dispose();
 
     private int GetOrderMode(GameData gd)
     {
@@ -763,7 +771,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 	{
 		if (TryPurchaseEmployeeSlot(out var message))
 		{
-			LastStaffPurchaseMessage = "已購買：" + message;
+			LastStaffPurchaseMessage = new ModText.Message("已購買：{0}", message);
 			if (_notifications.Value)
 			{
 				PendingNotification = "`" + message;
@@ -771,7 +779,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		}
 		else
 		{
-			LastStaffPurchaseMessage = message + "（僱用上限 +1）";
+			LastStaffPurchaseMessage = new ModText.Message("{0}（僱用上限 +1）", message);
 			if (_notifications.Value)
 			{
 				PendingNotification = "`" + message;
@@ -779,7 +787,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		}
 	}
 
-	internal bool TryPurchaseEmployeeSlot(out string message)
+	internal bool TryPurchaseEmployeeSlot(out ModText.Message message)
 	{
 		GameData instance = GameData.Instance;
 		NPC_Manager instance2 = NPC_Manager.Instance;
@@ -803,13 +811,13 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
         int extraSlotCost = ExtraSlotCost;
 		if (instance.gameFunds < (float)extraSlotCost)
 		{
-			message = "資金不足（需 $" + extraSlotCost + "）";
+			message = new ModText.Message("資金不足（需 ${0}）", extraSlotCost);
 			return false;
 		}
 		instance.CmdAlterFundsWithoutExperience(-extraSlotCost);
 		_extraSlotsPurchased.Value++;
 		ApplyExtraEmployeeSlots(instance2);
-		message = "員工上限 +1（花費 $" + extraSlotCost + "）";
+		message = new ModText.Message("員工上限 +1（花費 ${0}）", extraSlotCost);
 		Log.LogInfo("Staff: extra employee slot purchased for $" + extraSlotCost + " (total extra: " + _extraSlotsPurchased.Value + ")");
 		return true;
 	}
@@ -953,30 +961,30 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	private string BuildStatusText()
 	{
-		string text = (LocalizationOverride.Loaded ? (LocalizationOverride.Table.Count + " 條") : "未載入");
-		string text2 = "Better Supermarket Together v1.2.10 ｜ 繁中覆蓋：" + text;
+		string text = LocalizationOverride.Loaded ? ModText.Format("{0} 條", LocalizationOverride.Table.Count) : ModText.Get("未載入");
+		string text2 = ModText.Format("Better Supermarket Together v{0} ｜ 繁中覆蓋：{1}", PluginVersion, text);
 		GameData instance = GameData.Instance;
 		if (!_enable.Value)
 		{
-			return text2 + " ｜ ⚠插件已停用";
+			return text2 + ModText.Get(" ｜ ⚠插件已停用");
 		}
 		if (instance == null)
 		{
-			return text2 + " ｜（主選單）";
+			return text2 + ModText.Get(" ｜（主選單）");
 		}
-		string text3 = "補貨：待機";
+		string text3 = ModText.Get("補貨：待機");
 		if (instance.timeOfDay >= _orderAfterHour.Value && instance.timeOfDay <= _stopBeforeHour.Value)
 		{
-			text3 = "補貨：夜間窗口";
+			text3 = ModText.Get("補貨：夜間窗口");
 		}
 		else if (_daytimeEnable.Value && (!_daytimeOnlyWhenOpen.Value || instance.isSupermarketOpen) && instance.timeOfDay >= _daytimeStartHour.Value && instance.timeOfDay <= _daytimeEndHour.Value)
 		{
-			text3 = "補貨：日間窗口";
+			text3 = ModText.Get("補貨：日間窗口");
 		}
-		string text4 = text3 + " ｜ 定價：" + (_pricingEnable.Value ? (AutoPricingUnlocked ? (_pricingPercentage.Value + "%") : "鎖定（需 MART OS 2.0）") : "關") + " ｜ 促銷：" + (_promoEnable.Value ? (_promoDiscount.Value + "%") : "關") + " ｜ 倉庫整理：" + (_warehouseConsolidate.Value ? "開" : "關") + " ｜ 聰明補貨：" + (SmartRestockEnabled ? "開" : "關");
+		string text4 = text3 + ModText.Get(" ｜ 定價：") + (_pricingEnable.Value ? (AutoPricingUnlocked ? (_pricingPercentage.Value + "%") : ModText.Get("鎖定（需 MART OS 2.0）")) : ModText.Get("關")) + ModText.Get(" ｜ 促銷：") + (_promoEnable.Value ? (_promoDiscount.Value + "%") : ModText.Get("關")) + ModText.Get(" ｜ 倉庫整理：") + ModText.Get(_warehouseConsolidate.Value ? "開" : "關") + ModText.Get(" ｜ 聰明補貨：") + ModText.Get(SmartRestockEnabled ? "開" : "關");
 		if (!IsHost || !instance.isServer)
 		{
-			text4 += " ｜ ⚠非主機（功能待機）";
+			text4 += ModText.Get(" ｜ ⚠非主機（功能待機）");
 		}
 		return text2 + "\n" + text4;
 	}
@@ -1040,21 +1048,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 		for (int i = 0; i < 19; i++)
 		{
 			int group = i;
-			string item = "分類 " + group;
-			try
-			{
-				if (LocalizationManager.instance != null)
-				{
-					string localizationString = LocalizationManager.instance.GetLocalizationString("productGroup" + group);
-					if (!string.IsNullOrEmpty(localizationString) && localizationString != "LocError")
-					{
-						item = localizationString;
-					}
-				}
-			}
-			catch
-			{
-			}
+			string item = ModText.Categories[group];
 			list.Add((item, () => GroupMinStockEffective(group), (float v) =>
 			{
 				SetGroupMinStock(group, Mathf.RoundToInt(v));
