@@ -31,6 +31,7 @@ internal static class CompanionProtocol
 
     internal static JArray Tools() => JArray.Parse(@"[
       {'type':'function','function':{'name':'assign_work','description':'Assign the bound employee one native work cycle, then restore their original role after safe handoff. Rest and autonomous ticks use a finite 120-second duration. For product/shelf targets or sequences use set_plan.','parameters':{'type':'object','properties':{'role':{'type':'string','enum':['rest','checkout','restock','storage','security','repair','orders','production']}},'required':['role'],'additionalProperties':false}}},
+      {'type':'function','function':{'name':'assistant_task','description':'Player-only assistant errands. follow enters persistent following; return exits and restores original job safely. restock fills specified shelf personally; delegate assigns an idle resting coworker to that exact shelf, who returns to own job. guide leads player to shelf and waits if player falls behind. inspect reports observed shelf stock, warehouse units, path and other worker claim. query must be selected (crosshair shelf captured when opening F7), observed shelf_id, exact product ID or product name; ambiguous locations return candidates. follow/return use empty query. Errands resume following when assistant_mode is true. No automatic return to job until return.','parameters':{'type':'object','properties':{'action':{'type':'string','enum':['follow','return','restock','delegate','guide','inspect']},'query':{'type':'string'}},'required':['action','query'],'additionalProperties':false}}},
       {'type':'function','function':{'name':'inspect_staff','description':'List hired employees with current session staff_id, employee_number (1-based UI number), name, role, carry state and pending assignment. Search name, exact staff_id or employee_number; 20 per page. Resolve names here; ask for a number if duplicate names. Customers cannot be assigned.','parameters':{'type':'object','properties':{'query':{'type':'string'},'offset':{'type':'integer','minimum':0,'maximum':10000}},'required':['query','offset'],'additionalProperties':false}}},
       {'type':'function','function':{'name':'assign_staff','description':'Direct OTHER hired employees to native jobs requested by the player. One batch contains 1-64 distinct assignments from the latest roster; excludes the bound companion. Default completion=one_cycle: complete one confirmed cycle then restore the original role at a safe boundary. Rest defaults to duration=120 seconds. Optionally duration with duration_seconds 5-1800, or continuous ONLY for an explicit permanent reassignment (no automatic return). Waits for safe handoff; initial dispatch expires after 180 game seconds. Finite jobs time out after 900 game seconds and safely return. Acceptance is queued, not completed work. No targeted product/shelf plans for other staff. Player turns only; never autonomous ticks.','parameters':{'type':'object','properties':{'assignments':{'type':'array','minItems':1,'maxItems':64,'items':{'type':'object','properties':{'staff_id':{'type':'string'},'role':{'type':'string','enum':['rest','checkout','restock','storage','security','repair','orders','production']},'completion':{'type':'string','enum':['one_cycle','duration','continuous']},'duration_seconds':{'type':'integer','minimum':5,'maximum':1800}},'required':['staff_id','role'],'additionalProperties':false}}},'required':['assignments'],'additionalProperties':false}}},
       {'type':'function','function':{'name':'cancel_staff','description':'Cancel pending staff assignments and safely restore original roles for active finite assignments. Explicit permanent continuous reassignments remain in effect. Player turns only.','parameters':{'type':'object','properties':{},'additionalProperties':false}}},
@@ -63,6 +64,7 @@ internal static class CompanionProtocol
                 args = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read()) return false;
             }
+            if(name=="assistant_task")return args.Count==2 && args["action"]?.Type==JTokenType.String && Array.IndexOf(new[]{"follow","return","restock","delegate","guide","inspect"},(string)args["action"])>=0 && args["query"]?.Type==JTokenType.String && ((string)args["query"]).Length<=80;
             if (name == "assign_staff") return CompanionStaffOrder.TryParse(args,out _);
             if (name == "set_plan") return CompanionStep.TryParse(args,false,out _);
             if (name == "cancel_plan" || name == "cancel_staff") return args.Count == 0;
@@ -137,6 +139,7 @@ internal sealed class CompanionMemory
     public string EmployeePrefab = "";
     public string EmployeeName = "";
     public List<string> Facts = new List<string>();
+    public float[] RestCorner;
     public List<CompanionLine> History = new List<CompanionLine>();
 
     internal void Add(string role, string text)
@@ -165,6 +168,7 @@ internal sealed class CompanionMemory
         var result = JsonConvert.DeserializeObject<CompanionMemory>(File.ReadAllText(path), new JsonSerializerSettings { MaxDepth = 16, TypeNameHandling = TypeNameHandling.None });
         if (result == null || result.Version != 1 || result.Facts == null || result.History == null || result.Facts.Count > 24 || result.History.Count > 40)
             throw new IOException("記憶檔格式不支援。");
+        if(result.RestCorner!=null && (result.RestCorner.Length!=3 || Array.Exists(result.RestCorner,x=>float.IsNaN(x) || float.IsInfinity(x) || Math.Abs(x)>100000)))result.RestCorner=null;
         foreach (var fact in result.Facts) if (fact == null || fact.Length > 200) throw new IOException("記憶資料損壞。");
         foreach (var line in result.History) if (line == null || (line.Role != "user" && line.Role != "assistant" && line.Role != "system") || line.Text == null || line.Text.Length > 2000) throw new IOException("對話資料損壞。");
         return result;

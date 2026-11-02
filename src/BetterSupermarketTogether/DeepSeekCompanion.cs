@@ -24,9 +24,14 @@ internal sealed class DeepSeekCompanion
     private readonly ConfigEntry<bool> _avatarEnabled;
     private readonly CompanionAvatar _avatar;
     private readonly CompanionRiceBreak _riceBreak;
+    private readonly CompanionLife _life=new CompanionLife();
+    private readonly ConfigEntry<bool> _helpEnabled,_idleGestures;
     private readonly ConfigEntry<bool> _riceEnabled;
     internal bool RiceOwns(NPC_Info employee) => _riceBreak.Owns(employee);
-    internal bool NeedsSafeHandoff => _plan.HandingOff;
+    internal bool NeedsSafeHandoff => _plan.HandingOff || AssistantStaff.Count>0;
+    internal readonly CompanionAssistantStaff AssistantStaff=new CompanionAssistantStaff();
+    private bool _assistantMode;
+    private float _nextAssistantFollow;
     private readonly CompanionContext _context = new CompanionContext();
     private CompanionUsageStats _usage = new CompanionUsageStats();
     internal CompanionWorkWorld WorkWorld { get; } = new CompanionWorkWorld();
@@ -62,7 +67,7 @@ internal sealed class DeepSeekCompanion
         get
         {
             bool english=ModText.English;
-            return ModText.FormatFor(english,"自主模式：{0} · 本小時決策 {1}/{2}",ModText.Translate(_autonomy?"開":"關",english),_autoGate.Count(Time.unscaledTime),_autoLimit.Value)+
+            return (_assistantMode?(english?"Assistant mode: errands return to following.\n":"助理模式：差事完成後繼續跟隨。\n"):"")+ModText.FormatFor(english,"自主模式：{0} · 本小時決策 {1}/{2}",ModText.Translate(_autonomy?"開":"關",english),_autoGate.Count(Time.unscaledTime),_autoLimit.Value)+
                 "\n"+_plan.Summary(english)+(WorkWorld.SelectedShelf!=null?"\n"+ModText.FormatFor(english,"指向貨架：{0}",WorkWorld.SelectedShelf):"")+
                 "\n"+ModText.FormatFor(english,"其他員工臨時任務：{0}（待交接 {1}）",StaffWorld.Queue.Count,StaffWorld.Queue.WaitingCount);
         }
@@ -71,6 +76,13 @@ internal sealed class DeepSeekCompanion
     internal int BoundIndex => _memory?.EmployeeIndex ?? -1;
     internal NPC_Info BoundEmployee => _bound;
     internal Sprite Portrait => _avatar.Portrait;
+    internal bool UseRestCorner => _memory!=null && Behavior.RestCorner && !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !_riceBreak.Active;
+    internal float[] RestCorner => _memory?.RestCorner;
+    internal void SaveRestCorner(Vector3 point)
+    {
+        if(_memory==null)return;
+        _memory.RestCorner=new[]{point.x,point.y,point.z};Persist();
+    }
     internal string Transcript
     {
         get
@@ -84,7 +96,8 @@ internal sealed class DeepSeekCompanion
             return _transcriptCache;
         }
     }
-    internal string Facts => _memory == null || _memory.Facts.Count == 0 ? ModText.Get("尚未儲存偏好；可以說「記住我叫阿明」。") : string.Join("\n", _memory.Facts.Select((x, i) => (i + 1) + ". " + x));
+    private CompanionBehaviorPreferences Behavior => CompanionBehaviorPreferences.Resolve(_memory?.Facts,_helpEnabled.Value,_idleGestures.Value,_riceEnabled.Value);
+    internal string Facts => Behavior.Summary(ModText.English)+"\n"+( _memory == null || _memory.Facts.Count == 0 ? ModText.Get("尚未儲存偏好；可以說「記住我叫阿明」。") : string.Join("\n", _memory.Facts.Select((x, i) => (i + 1) + ". " + x)));
     internal string BindingLabel => _memory == null || BoundIndex < 0 ? ModText.Get("未綁定員工") : ModText.Format("員工 {0}：{1}", BoundIndex + 1, _memory.EmployeeName) + (_bound == null ? ModText.Get("（等待員工載入／需重新綁定）") : " · " + ModText.Get(CompanionProtocol.RoleLabels[Mathf.Clamp(_bound.taskPriority, 0, 7)]));
     private string KeyPath => Path.Combine(Paths.ConfigPath, "BetterSupermarketTogether.deepseek.key");
 
@@ -102,6 +115,8 @@ internal sealed class DeepSeekCompanion
             ModText.Description("每小時自主決策上限；每次決策最多四個 API 回覆。","Maximum autonomous decisions per hour; each decision has at most four API replies."),new AcceptableValueRange<int>(1,60)));
         _avatar = owner.gameObject.AddComponent<CompanionAvatar>();
         _riceBreak=new CompanionRiceBreak(_avatar);
+        _helpEnabled=config.Bind("Companion","ProactiveHelp",true,ModText.Description("閒時主動補附近一格貨架，完成一次後回原職；不呼叫 API。","When idle, help restock one nearby shelf then return to the original role. No API call."));
+        _idleGestures=config.Bind("Companion","IdleGestures",true,ModText.Description("閒時偶爾伸懶腰、左右看看或整理裙擺；僅本機外觀。","Occasional idle stretching, looking around and smoothing the skirt. Local visual only."));
         _riceEnabled=config.Bind("Companion","RiceEasterEgg",true,ModText.Description("低頻率偷吃一份貨架米商品；每遊戲日最多一次，需同伴休息且空手。","Rarely eat one stocked rice product while the companion is resting and empty-handed; at most once per game day."));
     }
 
@@ -119,7 +134,7 @@ internal sealed class DeepSeekCompanion
             catch (Exception) { Status = "記憶檔無法讀取，已保留原檔。請先備份並修復或移走該 JSON 檔再重進商店。"; }
         }
         var employee = ResolveEmployee();
-        if (_bound != null && employee != _bound) { Cancel();_plan.Reset(WorkWorld);StaffWorld.Queue.CancelAll();_riceBreak.Abort();_autonomy=false; }
+        if (_bound != null && employee != _bound) { _assistantMode=false;WorkWorld.HoldOriginalRole=false;AssistantStaff.Reset();Cancel();_plan.Reset(WorkWorld);StaffWorld.Queue.CancelAll();_riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();_autonomy=false; }
         _bound = employee;
         WorkWorld.Bind(_bound);
         _avatar.Bind(_avatarEnabled.Value ? _bound : null, Path.Combine(Path.GetDirectoryName(typeof(DeepSeekCompanion).Assembly.Location), "Companion", "DeepSeek-chan.vrm"));
@@ -131,6 +146,7 @@ internal sealed class DeepSeekCompanion
         if (_key.Value.IsDown() && !SettingsPanelUI.Typing) SettingsPanelUI.OpenCompanion();
         if (!BetterSupermarketPlugin.EnablePlugin)
         {
+            _assistantMode=false;WorkWorld.HoldOriginalRole=false;AssistantStaff.Cancel();
             if(Busy)Cancel();
             if(_plan.Owns)
             {
@@ -138,7 +154,7 @@ internal sealed class DeepSeekCompanion
                 if(_bound!=null && Time.timeScale>0 && !NPC_Manager.Instance.employeesOnRiot)_plan.Tick(Time.time,WorkWorld);
             }
             StaffWorld.Queue.CancelAll();
-            _riceBreak.Abort();
+            _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
             _autonomy=false;
         }
         else if(_bound!=null && Time.timeScale>0)
@@ -146,8 +162,13 @@ internal sealed class DeepSeekCompanion
             if(Time.unscaledTime>=_nextWorkTick)
             {
                 _nextWorkTick=Time.unscaledTime+.2f;
-                if(!NPC_Manager.Instance.employeesOnRiot)_plan.Tick(Time.time,WorkWorld);
-                if(WorkWorld.TakeExternalEvent())_autonomy=false;
+                if(!NPC_Manager.Instance.employeesOnRiot)
+                {
+                    _plan.Tick(Time.time,WorkWorld);
+                    if(_assistantMode && !_plan.Owns && Time.time>=_nextAssistantFollow)
+                    { _nextAssistantFollow=Time.time+10;_plan.Replace(new List<CompanionStep>{new CompanionStep{Kind="follow"}},false);_plan.Tick(Time.time,WorkWorld); }
+                }
+                if(WorkWorld.TakeExternalEvent()){_autonomy=false;_assistantMode=false;WorkWorld.HoldOriginalRole=false;}
                 if((_plan.Phase==CompanionPlanPhase.Completed || _plan.Phase==CompanionPlanPhase.Failed) && _lastPlanEventVersion!=_plan.EventVersion)
                 {
                     _lastPlanEvent=_plan.Status;_lastPlanEventVersion=_plan.EventVersion;_memory.AddNotice(_plan.Status);Persist();_autoGate.Changed();
@@ -159,11 +180,20 @@ internal sealed class DeepSeekCompanion
         {
             _nextStaffTick=Time.unscaledTime+.2f;
             StaffWorld.Queue.Tick(Time.time,StaffWorld);
+            if(!NPC_Manager.Instance.employeesOnRiot)AssistantStaff.Tick(BetterSupermarketPlugin.EnablePlugin);
             bool staffChanged=false;
             foreach(var notice in StaffWorld.Queue.Drain()) { _memory?.AddNotice(notice);staffChanged=true; }
             if(staffChanged)Persist();
-            var snack=_riceBreak.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && _riceEnabled.Value && _bound!=null &&
-                !Busy && !_plan.Owns && !_autonomy && !NPC_Manager.Instance.employeesOnRiot);
+            var behavior=Behavior;
+            if(!behavior.Help && _plan.Active?.OneDelivery==true && !_plan.HandingOff)_plan.Cancel();
+            var help=_life.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !_riceBreak.Active,
+                behavior,WorkWorld,_avatar);
+            if(help!=null)
+            {
+                _lastPlanEvent=null;_plan.Replace(new List<CompanionStep>{help},true);_plan.Tick(Time.time,WorkWorld);
+            }
+            var snack=_riceBreak.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && behavior.Rice && _bound!=null &&
+                !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !NPC_Manager.Instance.employeesOnRiot);
             if(snack!=null) { _lastRiceEvent=snack;_memory?.AddNotice(snack);Persist(); }
         }
         if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + .2f; SettingsPanelUI.RefreshCompanion(); }
@@ -196,8 +226,8 @@ internal sealed class DeepSeekCompanion
         string[] data = (npc.hiredEmployeesData[index] ?? "").Split('|');
         if (employee == null || employee.employeeDismissed || !employee.isEmployee || data.Length <= 9) return;
         Cancel();
-        _plan.Reset(WorkWorld);_autonomy=false;
-        StaffWorld.Queue.CancelAll();_riceBreak.Abort();
+        _assistantMode=false;WorkWorld.HoldOriginalRole=false;AssistantStaff.Cancel();_plan.Reset(WorkWorld);_autonomy=false;
+        StaffWorld.Queue.CancelAll();_riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
         _lastPlanEvent=null;_lastPlanEventVersion=-1;
         _context.Reset();
         _memory.EmployeeIndex = index;
@@ -213,8 +243,8 @@ internal sealed class DeepSeekCompanion
     {
         if (!BetterSupermarketPlugin.IsHost || _memory == null) return;
         Cancel();
-        _plan.Reset(WorkWorld);_autonomy=false;
-        StaffWorld.Queue.CancelAll();_riceBreak.Abort();
+        _assistantMode=false;WorkWorld.HoldOriginalRole=false;AssistantStaff.Cancel();_plan.Reset(WorkWorld);_autonomy=false;
+        StaffWorld.Queue.CancelAll();_riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
         _lastPlanEvent=null;_lastPlanEventVersion=-1;
         _context.Reset();
         _bound = null;
@@ -252,7 +282,7 @@ internal sealed class DeepSeekCompanion
     internal void ClearMemory()
     {
         if (!BetterSupermarketPlugin.IsHost || _memory == null) return;
-        Cancel(); _context.Reset(); _memory.Facts.Clear(); _memory.History.Clear();
+        Cancel(); _context.Reset(); _memory.Facts.Clear(); _memory.History.Clear(); _memory.RestCorner=null;
         _transcriptCache = null;
         // An explicit erase also removes the automatically retained previous version.
         try { _memory.Save(_memoryPath); if (File.Exists(_memoryPath + ".bak")) File.Delete(_memoryPath + ".bak"); Status = "已清除本商店對話及偏好，保留員工綁定。"; }
@@ -281,7 +311,7 @@ internal sealed class DeepSeekCompanion
         }
         catch (Exception) { if(automatic)_autoGate.Failure(Time.unscaledTime);Status = "無法讀取 API 設定或金鑰。"; return; }
         _automaticRequest=automatic;_automaticSucceeded=false;
-        _riceBreak.Abort();
+        _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
         var messages = BuildMessages(text,automatic);
         if(!automatic){_memory.Add("user", text);Persist();}
         _request = new CancellationTokenSource(TimeSpan.FromSeconds(50));
@@ -299,7 +329,7 @@ internal sealed class DeepSeekCompanion
             ["bound_employee"] = BindingLabel, ["state"] = employee.state, ["carrying"] = employee.boxNumberOfProducts,
             ["riot"] = NPC_Manager.Instance.employeesOnRiot, ["production"] = ProductionAutomation.Status };
         var current = new JObject { ["memories"] = new JArray(_memory.Facts.Select((fact,index)=>new JObject { ["number"]=index+1,["fact"]=fact })),
-            ["shop"] = snapshot,["work_board"]=WorkWorld.Snapshot(),["staff_roster"]=StaffWorld.Inspect("",0),["work_plan"]=_plan.Summary(true),["latest_work_event"]=_lastPlanEvent?.WireText,["latest_rice_event"]=_lastRiceEvent?.WireText,
+            ["assistant_mode"]=_assistantMode,["assistant_dispatches"]=AssistantStaff.Count,["behavior_preferences"]=Behavior.Snapshot(),["shop"] = snapshot,["work_board"]=WorkWorld.Snapshot(),["staff_roster"]=StaffWorld.Inspect("",0),["work_plan"]=_plan.Summary(true),["latest_work_event"]=_lastPlanEvent?.WireText,["latest_rice_event"]=_lastRiceEvent?.WireText,
             ["authorization_mode"]=automatic?"autonomous":"player",["autonomy_enabled"]=_autonomy,
             ["reply_language"] = ModText.English ? "English" : "Traditional Chinese; follow the player's language preference" };
         return _context.Begin(_persona.Value,_memory.History,current,text);
@@ -361,6 +391,7 @@ internal sealed class DeepSeekCompanion
     private CompanionToolResult Execute(string name, JObject args,bool automatic)
     {
         if(!CompanionToolPolicy.Allowed(name,automatic))return "自主模式不能指揮其他員工；請由玩家發出派工指令。";
+        if(name=="assistant_task")return AssistantTask((string)args["action"],(string)args["query"]);
         if(name=="inspect_staff")
         {
             var data=StaffWorld.Inspect((string)args["query"],(int)args["offset"]);
@@ -390,26 +421,44 @@ internal sealed class DeepSeekCompanion
         if (name == "remember")
         {
             string fact = ((string)args["fact"]).Trim();
-            if (_memory.Facts.Contains(fact)) return "已存在此記憶。";
-            if (_memory.Facts.Count >= 24) return "記憶已滿（24 項），請先忘記不需要的資料。";
-            _memory.Facts.Add(fact); return new ModText.Message("已記住：{0}", fact);
+            if (!CompanionBehaviorPreferences.Store(_memory.Facts,fact,out string saved)) return "記憶已滿（24 項），請先忘記不需要的資料。";
+            return new ModText.Message("已記住：{0}", saved);
         }
         if (name == "forget_memory")
         {
             int index = (int)args["number"] - 1;
             if (index >= _memory.Facts.Count) return "沒有此編號的記憶。";
-            _memory.Facts.RemoveAt(index); return "已忘記指定偏好；原始對話仍會保留，清空全部可在面板操作。";
+            CompanionBehaviorPreferences.Forget(_memory.Facts,index); return "已忘記指定偏好；原始對話仍會保留，清空全部可在面板操作。";
         }
         return QueuePlan(new List<CompanionStep>{new CompanionStep {Kind="work",Role=(string)args["role"],Completion=automatic || (string)args["role"]=="rest"?"duration":"one_cycle",Seconds=automatic || (string)args["role"]=="rest"?120:0}},automatic);
     }
 
+    private CompanionToolResult AssistantTask(string action,string query)
+    {
+        if(ResolveEmployee()==null || NPC_Manager.Instance.employeesOnRiot)return "員工目前不可用。";
+        if(action=="return"){StopWork(false);return "助理模式已結束，安全交接後恢復原職。";}
+        if(action=="follow")
+        {
+            _assistantMode=true;WorkWorld.HoldOriginalRole=true;_autonomy=false;
+            return QueuePlan(new List<CompanionStep>{new CompanionStep{Kind="follow"}},false);
+        }
+        var target=WorkWorld.Locate(query,out var report,out string error);
+        if(action=="inspect" && target==null)return new CompanionToolResult(new ModText.Message("{0}",error),error+"\n"+report.ToString());
+        if(action=="inspect")return new CompanionToolResult(new ModText.Message("已查閱商店資料，符合 {0} 列；顯示第 {1} 頁。",((JArray)report["matches"]??new JArray()).Count,1),report.ToString());
+        if(target==null)return new CompanionToolResult(new ModText.Message("{0}",error),error+"\n"+report.ToString());
+        if(action=="delegate")return AssistantStaff.Dispatch(WorkWorld,target,this);
+        if(action=="guide")target.Kind="guide";
+        return QueuePlan(new List<CompanionStep>{target},false);
+    }
     private CompanionToolResult QueuePlan(List<CompanionStep> steps,bool automatic)
     {
         if(ResolveEmployee()==null || NPC_Manager.Instance==null || NPC_Manager.Instance.employeesOnRiot)
             return "未接受計畫：員工不可用或罷工中。";
+        if(_assistantMode && steps.Any(x=>x.Kind=="work" && x.Continuous))return "助理模式下請使用有限差事；先叫我回原本工作才能永久改職責。";
+        if(!automatic && steps.Any(x=>x.Kind=="follow" && x.Seconds==0)){_assistantMode=true;WorkWorld.HoldOriginalRole=true;_autonomy=false;}
         var error=WorkWorld.Validate(steps);
         if(error!=null)return new ModText.Message("計畫未被接受：{0}",error);
-        _riceBreak.Abort();
+        _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
         _lastPlanEvent=null;_plan.Replace(steps,automatic);
         _plan.Tick(Time.time,WorkWorld);
         ModText.Message notice=!_plan.Owns && _plan.Phase==CompanionPlanPhase.Failed?new ModText.Message("計畫未能開始：{0}",_plan.Status):
@@ -420,26 +469,30 @@ internal sealed class DeepSeekCompanion
     {
         if(!BetterSupermarketPlugin.IsHost || _memory==null || _bound==null)return;
         if(Busy && _automaticRequest)Cancel();
-        _riceBreak.Abort();
+        _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
         _autonomy=enabled;_autoGate.Changed();
-        if(enabled)_plan.Cancel();
+        if(enabled){_assistantMode=false;WorkWorld.HoldOriginalRole=false;_plan.Cancel();}
         Status=enabled?"已開啟自主工作；每次商店讀檔後需重新開啟。":"已關閉自主工作。";
     }
     internal void StopWork(bool cancelRequest=true)
     {
         if(!BetterSupermarketPlugin.IsHost || _memory==null)return;
         if(cancelRequest)Cancel();
-        _riceBreak.Abort();
+        _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
+        _assistantMode=false;WorkWorld.HoldOriginalRole=false;AssistantStaff.Cancel();
         _autonomy=false;_plan.Cancel();StaffWorld.Queue.CancelAll();Status="已停止臨時計畫及自主模式；安全交接後恢復原職。";
     }
     internal void SelectShelf() { _status=WorkWorld.PointAtShelf(); }
     internal void ExternalRoleChange(int index)
     {
-        if(index==BoundIndex)_riceBreak.Abort();
+        if(index==BoundIndex){_riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();}
+        if(AssistantStaff.ChangingRole)return;
+        AssistantStaff.External(index);
         if(StaffWorld.ChangingNativeRole)return;
         StaffWorld.ExternalChange(index);
         if(BetterSupermarketPlugin.IsHost && Busy && !WorkWorld.ChangingNativeRole)Cancel();
         if(!BetterSupermarketPlugin.IsHost || index<0 || index!=BoundIndex || WorkWorld.ChangingNativeRole)return;
+        _assistantMode=false;WorkWorld.HoldOriginalRole=false;
         Cancel();_autonomy=false;WorkWorld.ExternalChange();_plan.Reset(WorkWorld);
         Status="職務已由原生介面更改，同伴計畫及自主模式已停止。";
     }
@@ -496,8 +549,8 @@ internal sealed class DeepSeekCompanion
     internal void Reset()
     {
         if (_saveName == null && !Busy) return;
-        Cancel();_plan.Reset(WorkWorld);WorkWorld.Bind(null);WorkWorld.ClearTargets();
-        StaffWorld.Reset();_riceBreak.Reset();_lastRiceEvent=null;
+        _assistantMode=false;WorkWorld.HoldOriginalRole=false;AssistantStaff.Reset();Cancel();_plan.Reset(WorkWorld);WorkWorld.Bind(null);WorkWorld.ClearTargets();
+        StaffWorld.Reset();_riceBreak.Reset();_life.Reset();_lastRiceEvent=null;
         _autonomy=false;_autoGate.Reset();_nextAutoScan=_nextWorkTick=_nextStaffTick=0;_lastPlanEvent=null;_lastPlanEventVersion=-1;
         _bound = null; _saveName = _memoryPath = null; _memory = null; _nextSend = 0;
         _context.Reset(); _usage = new CompanionUsageStats();

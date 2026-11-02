@@ -16,6 +16,10 @@ LocalizationChecks.Run(Check);
 MotionChecks.Run(Check);
 StaffCommandChecks.Run(Check);
 RiceChecks.Run(Check);
+LifeChecks.Run(Check);
+BehaviorPreferenceChecks.Run(Check);
+SocialChecks.Run(Check);
+AssistantChecks.Run(Check);
 var rigs=JArray.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"employee-bone-names.json")));
 Check(rigs.Count==7,"all seven native employee models covered");
 foreach(var rig in rigs) {
@@ -95,7 +99,7 @@ handler.Reply="{\"choices\":[{\"finish_reason\":\"tool_calls\",\"message\":{\"ro
 var response=await CompanionProtocol.Complete(client,CompanionProtocol.Endpoint("https://example.com"),"test-secret","test-model",messages,true,CancellationToken.None);
 Check(response["tool_calls"]?.Count()==1,"real transport decodes tool response");
 var sent=JObject.Parse(handler.Body);
-Check((string)sent["thinking"]?["type"]=="disabled" && (string)sent["model"]=="test-model" && sent["tools"]?.Count()==10 &&
+Check((string)sent["thinking"]?["type"]=="disabled" && (string)sent["model"]=="test-model" && sent["tools"]?.Count()==11 &&
     sent["tools"].Select(x=>(string)x["function"]?["name"]).Contains("assign_staff"),"non-thinking tool request includes staff dispatch schema");
 Check(handler.Auth=="Bearer test-secret" && !handler.Body.Contains("test-secret"),"credential stays in authorization header");
 handler.Reply="{\"choices\":[{\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"收到\"}}]}";

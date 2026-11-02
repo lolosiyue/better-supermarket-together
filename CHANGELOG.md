@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.4.9 — 2026-11-02
+
+- Add player-only assistant_task tools for persistent follow, personal targeted restocking, exact-shelf coworker delegation, product/shelf guidance, local inspection and return-to-job. Preserve the original job throughout assistant errands; finite outcomes resume follow with bounded retry delay. Explicit return, manual job changes, plugin disable or scene reset exit assistant mode.
+- Capture the crosshair shelf when F7 opens. Product/name lookup reports ambiguity instead of choosing a random location. Inspection reports observed shelf/warehouse quantities, companion path reachability and other employee claims.
+- Delegation chooses a reachable, idle resting coworker without an existing temporary assignment, targets the exact shelf and restores that worker's role safely. Reject duplicate shelf dispatches. Guide waits if the player falls behind, finishes when the player arrives nearby, and gives up after 180 seconds before resuming follow.
+- Follow targets a side/rear offset. Local proactive help, idle routines and rice behavior yield to assistant mode. No approach-player completion reports.
+- 337 companion checks passed, including assistant schema, authority and tool budget tests. Release compiled against installed game assemblies. Live API interpretation, navigation and multi-worker handoff remain unverified.
+
+## 1.4.8 — 2026-11-02
+
+- Add a short nearby nod on entering a visible 3.5m encounter, with a 90-second cooldown; head-only overlay does not stop navigation or work. No repeat while standing beside the player.
+- Add a brief shoulder/arm release after at least 30 seconds of work-state activity with confirmed experience progress, followed by three seconds of genuine idle. Five-minute cooldown; no approaching the player or reports.
+- Remember a preferred reachable native rest-area position per shop. Override only the bound companion's native rest destination while no explicit plan, API autonomy or snack owns the employee. Fall back when occupied, unreachable or the rest area moved; do not change job or force an off-duty worker to rest. Clear-all memory also clears the spot.
+- Add on/off behavior preferences for nodding, post-work relaxation and fixed rest position. Gesture master-off also suppresses nodding and relaxation.
+- 322 companion checks passed including 14 new encounter/work-evidence/cooldown/preference/rest-coordinate checks. Runtime pose appearance, line-of-sight and native destination integration remain unverified.
+
+## 1.4.7 — 2026-11-02
+
+- Connect explicit saved behavior preferences to local proactive help, rice snacking, gesture frequency and individual stretch/look/skirt gestures. Recognize a bounded canonical vocabulary and exact legacy phrases; arbitrary prose remains conversational memory.
+- Replace conflicting versions of the same setting on remember; forget removes all recognized versions of that setting so older values cannot silently return. Existing per-shop memory format is unchanged. Config disable remains a master switch.
+- Show effective behavior settings in F7 and current model context. Disabling local help requests safe handoff of an active local help task. Fewer gestures use 3–6 minute opportunities instead of 1–2 minutes; existing random chance and idle requirements remain.
+- 308 companion checks passed, including 15 new preference/forget/config/persistence/schema checks. Live model interpretation and in-game acceptance remain pending.
+
+## 1.4.6 — 2026-11-02
+
+- Add local proactive help: after at least 15 seconds of confirmed idle time, select one ordinary shelf row within 12 metres with reachable unreserved warehouse stock. Attempt at most every three minutes. Stop selecting new targets after confirmed delivery; finish safe stock handoff and restore the original role. Abandon empty/contested targets or a 90-second unsuccessful attempt. Manual role changes take precedence.
+- Add occasional local idle stretching, looking around and skirt-smoothing hand gestures. Each lasts about 3–5 seconds, with 60–120 second opportunity intervals and a 65% chance. Blend out on native activity or player intervention; never take over navigation or change jobs for a gesture.
+- Dedicated checkout staff, security and production are not borrowed. Storage, repair and order staff require conservative no-work checks; restock staff retain native restocking. Disable local help/gestures with Companion.ProactiveHelp / Companion.IdleGestures. Both default on and require no API call; existing API autonomy takes precedence.
+- No approach-player reporting. Existing F7 plan outcomes remain available. No changes to preference-memory semantics.
+- Release build and 293 companion checks passed, including 18 new eligibility/cooldown/schema checks. Unity animation and live gameplay acceptance remain pending.
+
 ## 1.4.5 — 2026-11-02
 
 - Show a DeepSeek model portrait for the bound employee in native assignment, dismissal list and employee detail panels. Match the live employee object and slot, never replace shared prefab sprites or applicant portraits.

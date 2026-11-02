@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace BetterSupermarketTogether;
 
-[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.4.5")]
+[BepInPlugin("local.supermarkettogether.autorestock2230", "Better Supermarket Together", "1.4.9")]
 [BepInProcess("Supermarket Together.exe")]
 public class BetterSupermarketPlugin : BaseUnityPlugin
 {
@@ -19,7 +19,7 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 
 	public const string PluginName = "Better Supermarket Together";
 
-	public const string PluginVersion = "1.4.5";
+	public const string PluginVersion = "1.4.9";
 
     internal DeepSeekCompanion Companion { get; private set; }
 

@@ -10,11 +10,14 @@ internal sealed class CompanionStep
     internal string Kind, Role, Completion, Shelf;
     internal int? Product;
     internal int Seconds;
+    internal int? RowPair; // Internal proactive target; never accepted from API JSON.
+    internal bool OneDelivery;
     internal bool Continuous => Kind == "follow" ? Seconds == 0 : Kind == "work" && Completion == "continuous";
     internal ModText.Message Label
     {
         get
         {
+            if(Kind=="guide")return new ModText.Message("帶路至貨架 {0}",Shelf);
             if(Kind=="restock")return new ModText.Message("補貨：{0}{1}",Product.HasValue?new ModText.Message("商品 #{0}",Product.Value):new ModText.Message("所有商品"),
                 Shelf!=null?(object)new ModText.Message("，貨架 {0}",Shelf):"");
             if(Kind=="follow")return Seconds>0?new ModText.Message("跟隨房主 {0} 秒",Seconds):new ModText.Message("持續跟隨房主");
@@ -199,7 +202,7 @@ internal sealed class CompanionAutonomyGate
 
 internal static class CompanionToolPolicy
 {
-    internal static bool Movement(string name) => name=="assign_staff" || name=="cancel_staff" || name=="assign_work" || name=="set_plan" || name=="cancel_plan" || name=="set_autonomy";
+    internal static bool Movement(string name) => name=="assistant_task" || name=="assign_staff" || name=="cancel_staff" || name=="assign_work" || name=="set_plan" || name=="cancel_plan" || name=="set_autonomy";
     internal static bool Allowed(string name,bool automatic) => !automatic || name=="assign_work" || name=="set_plan" || name=="inspect_shop" || name=="inspect_staff";
     internal static bool CanHandoff(int role,int state,int equipped,bool waiting,int waitTarget)
     {
@@ -238,7 +241,7 @@ internal sealed class CompanionToolBudget
         {
             if(token is not JObject call || !CompanionProtocol.ValidateCall(call,out string name,out JObject args) ||
                 !CompanionToolPolicy.Allowed(name,automatic) || _ids.Contains((string)call["id"]) || !ids.Add((string)call["id"]))return false;
-            if(CompanionToolPolicy.Movement(name))controls++;
+            if(CompanionToolPolicy.Movement(name) && !(name=="assistant_task" && (string)args["action"]=="inspect"))controls++;
             if(automatic && name=="set_plan" && !CompanionStep.TryParse(args,true,out _))return false;
         }
         if(Controls+controls>1)return false;

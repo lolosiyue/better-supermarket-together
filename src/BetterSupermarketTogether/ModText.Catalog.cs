@@ -8,6 +8,13 @@ internal static partial class ModText
 {
     internal static readonly Dictionary<string, string> Catalog = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        ["助理模式：差事完成後繼續跟隨。\n"] = "Assistant mode: errands return to following.\n",
+        ["助理模式已結束，安全交接後恢復原職。"] = "Assistant mode ended; original role will resume after safe handoff.",
+        ["助理模式下請使用有限差事；先叫我回原本工作才能永久改職責。"] = "Use finite errands in assistant mode; return to original work before a permanent reassignment.",
+        ["帶路至貨架 {0}"] = "Guide to shelf {0}",
+        ["請先指向貨架並開啟 F7，或提供商品名稱。"] = "Point at a shelf and open F7, or provide a product name.",
+        ["找不到相符貨架。"] = "No matching shelf found.",
+        ["找到多個貨架，請指定 shelf_id。"] = "Several shelves match; specify a shelf_id.",
         ["待命"] = "Idle",
         ["執行中"] = "Running",
         ["等待手上工作安全交接"] = "Waiting for safe handoff",

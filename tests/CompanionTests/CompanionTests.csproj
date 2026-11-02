@@ -5,6 +5,9 @@
     <GameDir Condition="'$(GameDir)' == ''">$(SUPERMARKET_TOGETHER_DIR)</GameDir>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionSocialPolicy.cs" Link="CompanionSocialPolicy.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionBehaviorPreferences.cs" Link="CompanionBehaviorPreferences.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionLifePolicy.cs" Link="CompanionLifePolicy.cs" />
     <Compile Include="../../src/BetterSupermarketTogether/CompanionRicePolicy.cs" Link="CompanionRicePolicy.cs" />
     <Compile Include="../../src/BetterSupermarketTogether/CompanionStaffCommands.cs" Link="CompanionStaffCommands.cs" />
     <Compile Include="../../src/BetterSupermarketTogether/CompanionMotionMath.cs" Link="CompanionMotionMath.cs" />

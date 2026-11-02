@@ -22,6 +22,10 @@ internal sealed class CompanionAvatar : MonoBehaviour
     private CompanionPoseBridge _bridge;
     private CompanionSecondaryMotion _secondary;
     private CompanionRicePose _ricePose;
+    private CompanionIdlePose _idlePose;
+    internal bool CanIdlePose => Ready && _ricePose==null && _idlePose==null;
+    internal void BeginIdlePose(int kind,Vector3? lookTarget=null) { if(CanIdlePose)_idlePose=new CompanionIdlePose(kind,Time.time,lookTarget); }
+    internal void StopIdlePose() => _idlePose?.Stop(Time.time);
     private Dictionary<string,Transform> _human;
     private float _riceStarted;
     internal bool Ready => _visual!=null && _visual.activeSelf && _bridge!=null && _human!=null && _human.ContainsKey("leftHand") && _human.ContainsKey("rightHand");
@@ -203,6 +207,11 @@ internal sealed class CompanionAvatar : MonoBehaviour
         if (_bridge == null || _visual == null || !_visual.activeSelf) return;
         if (!_bridge.Apply(_employee!=null && _employee.equippedItem>=1 && _employee.equippedItem<=5))
         { Release(); _retry.Reset(); Status="員工模型已變更，正在重新載入外觀。"; return; }
+        if(_idlePose!=null)
+        {
+            if(_idlePose.IsNod ? _employee==null || _employee.equippedItem!=0 || _employee.employeeDismissed : !CompanionLife.Idle(_employee))_idlePose.Stop(Time.time);
+            if(!_idlePose.Apply(Time.time,_bridge,_human,_employee.transform))_idlePose=null;
+        }
         _ricePose?.Apply(Time.time-_riceStarted);
         _secondary?.Apply(Time.deltaTime);
     }
@@ -210,6 +219,7 @@ internal sealed class CompanionAvatar : MonoBehaviour
     internal bool BeginRicePose(int product)
     {
         if(!Ready || _ricePose!=null)return false;
+        _idlePose=null;
         try { _ricePose=new CompanionRicePose(_bridge,_human,_employee.transform,product);_riceStarted=Time.time;return true; }
         catch(Exception error) { EndRicePose();BetterSupermarketPlugin.Log.LogWarning("Rice pose unavailable: "+error.GetType().Name);return false; }
     }
@@ -219,7 +229,7 @@ internal sealed class CompanionAvatar : MonoBehaviour
     internal void Clear() { if (_load != null) StopCoroutine(_load); _load=null; _employee=null; _modelPath=_lastDiagnostic=null; Release(); _retry.Reset(); Status="使用原有員工外觀。"; }
     private void Release()
     {
-        EndRicePose();_human=null; Portrait=null;
+        EndRicePose();_idlePose=null;_human=null; Portrait=null;
         _bridge?.Restore(); _bridge=null; _secondary=null;
         foreach (var renderer in _hidden) if (renderer != null) renderer.enabled=true;
         _hidden.Clear();

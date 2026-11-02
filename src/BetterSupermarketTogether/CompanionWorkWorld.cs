@@ -36,15 +36,21 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
     private NPC_Manager Manager => NPC_Manager.Instance;
     private Transform Shelves => Manager?.shelvesOBJ != null ? Manager.shelvesOBJ.transform : null;
     internal void Bind(NPC_Info employee) { if(_employee!=employee)_originalRole=null;_employee=employee; }
+    internal bool HoldOriginalRole;
+    internal static CompanionWorkWorld For(NPC_Info employee)
+    {
+        var c=BetterSupermarketPlugin.Instance?.Companion;
+        return c?.WorkWorld.Matches(employee)==true?c.WorkWorld:c?.AssistantStaff.World(employee);
+    }
     internal bool Targeted => _step?.Kind=="restock";
     internal static bool HasTarget(NPC_Info employee)
     {
-        var world=BetterSupermarketPlugin.Instance?.Companion?.WorkWorld;
+        var world=For(employee);
         return world?.Matches(employee)==true && world.Targeted;
     }
     internal static bool Accepts(NPC_Info employee,Data_Container shelf,int pair,int product)
     {
-        var world=BetterSupermarketPlugin.Instance?.Companion?.WorkWorld;
+        var world=For(employee);
         return world?.Matches(employee)!=true || world.Allows(shelf,pair,product);
     }
     internal bool Matches(NPC_Info employee) => employee!=null && employee==_employee;
@@ -134,8 +140,61 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
                 .OrderBy(x=>(double)(int)x["count"]/Math.Max(1,(int)x["capacity"])).Take(20)),
             ["catalog_hint"]="inspect_shop(query, offset) searches names, exact product IDs or shelf IDs; 20 rows/page. IDs expire when the shop reloads. Ordinary retail shelves only." };
     }
+    internal CompanionStep FindHelpingTask()
+    {
+        if(_employee==null || Shelves==null)return null;
+        var route=new EmployeeNavigation(_employee.gameObject);
+        if(!route.Ready)return null;
+        RestockAssignments.Collect(Manager,_employee.gameObject,false,out var occupied,out var sources);
+        var available=new HashSet<int>();
+        if(Manager.storageOBJ==null)return null;
+        foreach(Transform child in Manager.storageOBJ.transform)
+        {
+            var shelf=child.GetComponent<Data_Container>();var a=shelf?.productInfoArray;
+            if(a==null || shelf.standSpot==null || !route.CanReach(shelf.standSpot.transform.position))continue;
+            for(int p=0;p+1<a.Length;p+=2)
+                if(a[p]>=0 && a[p+1]>0 && !sources.Contains(SmarterRestockerTaskPatch.SlotKey(child.GetSiblingIndex(),p)))available.Add(a[p]);
+        }
+        CompanionStep best=null;float distance=12*12;
+        foreach(Transform child in Shelves)
+        {
+            if(occupied.Contains(child.GetSiblingIndex()))continue;
+            var shelf=child.GetComponent<Data_Container>();var a=shelf?.productInfoArray;
+            if(a==null || shelf.standSpot==null)continue;
+            float d=(child.position-_employee.transform.position).sqrMagnitude;
+            if(d>distance || !route.CanReach(shelf.standSpot.transform.position))continue;
+            for(int p=0;p+1<a.Length;p+=2)
+                if(available.Contains(a[p]) && a[p+1]>=0 && a[p+1]<Manager.GetMaxProductsPerRow(child.GetSiblingIndex(),a[p]))
+                {best=new CompanionStep{Kind="restock",Shelf=Id(shelf),Product=a[p],RowPair=p,OneDelivery=true};distance=d;break;}
+        }
+        return best;
+    }
+    internal CompanionStep Locate(string query,out JObject report,out string error)
+    {
+        error=null;
+        if(string.IsNullOrWhiteSpace(query) || query=="selected")query=SelectedShelf;
+        if(string.IsNullOrWhiteSpace(query)){report=new JObject();error="請先指向貨架並開啟 F7，或提供商品名稱。";return null;}
+        var rows=Rows(query);report=new JObject{["matches"]=new JArray(rows.Take(40))};
+        var shelves=rows.Select(x=>(string)x["shelf_id"]).Distinct().ToArray();
+        if(shelves.Length!=1){error=shelves.Length==0?"找不到相符貨架。":"找到多個貨架，請指定 shelf_id。";return null;}
+        var shelf=Find(shelves[0]);
+        var route=_employee==null?null:new EmployeeNavigation(_employee.gameObject);
+        bool reachable=shelf?.standSpot!=null && route?.CanReach(shelf.standSpot.transform.position)==true;
+        RestockAssignments.Collect(Manager,_employee?.gameObject,false,out var occupied,out _);
+        report["reachable"]=reachable;report["claimed_by_other_employee"]=shelf!=null && occupied.Contains(shelf.transform.GetSiblingIndex());
+        report["note"]="Counts are observed stock; reachable is for the bound companion. Do not infer unavailable causes. Other staff claims are observed assignments, not guarantees.";
+        int[] products=rows.Select(x=>(int)x["product_id"]).Distinct().ToArray();
+        return new CompanionStep{Kind="restock",Shelf=shelves[0],Product=products.Length==1?(int?)products[0]:null};
+    }
+    internal Data_Container ResolveShelf(string id)=>Find(id);
+    internal CompanionStep ImportTarget(CompanionWorkWorld source,CompanionStep step)
+    {
+        var shelf=source.Find(step.Shelf);
+        return shelf==null?null:new CompanionStep{Kind="restock",Shelf=Id(shelf),Product=step.Product};
+    }
     internal ModText.Message PointAtShelf()
     {
+        SelectedShelf=null;
         var player=FirstPersonController.Instance;
         var camera=player!=null?player.GetComponentInChildren<Camera>():null;
         if(camera==null)camera=Camera.main;
@@ -162,7 +221,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         if(_employee==null || Manager==null || !Manager.isServer)return "員工目前不可用。";
         if(!_originalRole.HasValue)_originalRole=_employee.taskPriority;
         _step=step;_handoff=false;_externalOverride=false;_goals.Clear();
-        int role=step.Kind=="follow"?0:step.Kind=="restock"?2:Array.IndexOf(CompanionProtocol.Roles,step.Role);
+        int role=(step.Kind=="follow" || step.Kind=="guide")?0:step.Kind=="restock"?2:Array.IndexOf(CompanionProtocol.Roles,step.Role);
         _followPreviousRole=_employee.taskPriority;
         if(step.Kind=="restock")
         {
@@ -173,6 +232,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
                 var a=shelf.productInfoArray;if(a==null)continue;
                 for(int p=0;p+1<a.Length;p+=2)
                 {
+                    if(step.RowPair.HasValue && p!=step.RowPair.Value)continue;
                     if(a[p]<0 || a[p+1]<0 || step.Product.HasValue && a[p]!=step.Product.Value)continue;
                     int capacity=Manager.GetMaxProductsPerRow(child.GetSiblingIndex(),a[p]);
                     if(capacity>a[p+1])_goals.Add(new Goal {Shelf=shelf,Pair=p,Product=a[p],Quota=new CompanionRestockQuota(a[p+1],capacity)});
@@ -185,13 +245,13 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         }
         if(!SetRole(role))return "遊戲未接受職務變更。";
         _expectedRole=role;_baseline=Experience();
-        if(step.Kind=="restock" || step.Kind=="follow")
+        if(step.Kind=="restock" || step.Kind=="follow" || step.Kind=="guide")
         {
             _employee.StopCoroutinesFromManager();_employee.state=0;RestockAssignments.ForgetTask(_employee);
             var agent=_employee.GetComponent<NavMeshAgent>();
             if(agent!=null && agent.enabled && agent.isOnNavMesh)agent.ResetPath();
         }
-        if(step.Kind=="follow")
+        if(step.Kind=="follow" || step.Kind=="guide")
         {
             var agent=_employee.GetComponent<NavMeshAgent>();
             if(agent==null || !agent.enabled || !agent.isOnNavMesh)return "員工不在可行走區域。";
@@ -205,7 +265,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         if(_employee==null || Manager==null || !Manager.isServer)return false;
         if(_employee.taskPriority==role)return true;
         var handler=AccessTools.Method(typeof(NPC_Manager),"UserCode_CmdChangeEmployeePriority__Int32__Int32");
-        int index=BetterSupermarketPlugin.Instance?.Companion?.BoundIndex ?? -1;
+        int index=Manager.employeesArray==null?-1:Array.FindIndex(Manager.employeesArray,x=>x!=null && x.GetComponent<NPC_Info>()==_employee);
         if(handler==null || index<0 || _employee.employeeDismissed || Manager.employeesArray==null || index>=Manager.employeesArray.Length ||
             Manager.employeesArray[index]==null || Manager.employeesArray[index].GetComponent<NPC_Info>()!=_employee)return false;
         ChangingNativeRole=true;
@@ -240,6 +300,20 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
             if(step.Completion=="one_cycle" && elapsed>900){detail="十五分鐘內沒有確認完成一輪工作。";return CompanionProgress.Failed;}
             return CompanionProgress.Running;
         }
+        if(step.Kind=="guide")
+        {
+            if(elapsed>180){detail="無法到達房主所在位置。";return CompanionProgress.Failed;}
+            var shelf=Find(step.Shelf);var player=FirstPersonController.Instance;
+            var agent=_employee.GetComponent<NavMeshAgent>();var route=new EmployeeNavigation(_employee.gameObject);
+            if(shelf==null || shelf.standSpot==null || player==null || !route.Ready)return CompanionProgress.Failed;
+            Vector3 destination=shelf.standSpot.transform.position;
+            if(!route.CanReach(destination))return CompanionProgress.Failed;
+            if(route.IsAt(destination))
+            {agent.isStopped=true;return route.IsNear(player.transform.position,4)?CompanionProgress.Complete:CompanionProgress.Running;}
+            if(!route.IsNear(player.transform.position,6)){agent.isStopped=true;return CompanionProgress.Running;}
+            if(Time.time>=_nextFollow){_nextFollow=Time.time+.5f;if(!route.MoveTo(destination))return CompanionProgress.Failed;}
+            return CompanionProgress.Running;
+        }
         if(step.Kind=="follow")
         {
             if(step.Seconds>0 && elapsed>=step.Seconds)return CompanionProgress.Complete;
@@ -257,7 +331,16 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         }
         int remaining=_goals.Sum(x=>x.Quota.Remaining);
         if(remaining<_remaining){_remaining=remaining;_lastProgress=Time.time;}
-        if(remaining==0)return CompanionProgress.Complete;
+        if(remaining==0 || step.OneDelivery && _goals.Any(x=>x.Quota.Delivered>0))return CompanionProgress.Complete;
+        if(step.OneDelivery && elapsed>90){detail="補貨停滯：請檢查庫存、路徑及占用。";return CompanionProgress.Failed;}
+        if(step.OneDelivery && _employee.equippedItem==0 && elapsed>2)
+        {
+            var stock=Stock();
+            RestockAssignments.Collect(Manager,_employee.gameObject,false,out var occupied,out _);
+            if(!_goals.Any(x=>stock.TryGetValue(x.Product,out int n) && n>0) ||
+                _goals.Any(x=>occupied.Contains(x.Shelf.transform.GetSiblingIndex())))
+            {detail="補貨停滯：請檢查庫存、路徑及占用。";return CompanionProgress.Failed;}
+        }
         detail=new ModText.Message("尚需補貨：{0}",remaining);
         if(Time.time-_lastProgress>180 || elapsed>900)
         {detail="補貨停滯：請檢查庫存、路徑及占用。";return CompanionProgress.Failed;}
@@ -274,7 +357,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
             if(route.IsNear(player.transform.position,3.5f)){agent.isStopped=true;agent.ResetPath();_followBlocked=0;_followProgress=now;return true;}
             if(Vector3.SqrMagnitude(_employee.transform.position-_followPosition)>.04f){_followPosition=_employee.transform.position;_followProgress=now;}
             if(now-_followProgress>45)return false;
-            Vector3 target=player.transform.position-player.transform.forward*2f;
+            Vector3 target=player.transform.position-player.transform.forward*2f+player.transform.right*1.2f;
             if(route.MoveTo(target) || route.MoveTo(player.transform.position)){_followBlocked=0;return true;}
         }
         if(_followBlocked==0)_followBlocked=now;
@@ -291,11 +374,11 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
                 if(_employee.taskPriority==_expectedRole && !_externalOverride)agent.ResetPath();
                 agent.isStopped=_oldStopped;
             }
-            if(!_externalOverride && _employee.taskPriority==0 && BetterSupermarketPlugin.IsHost)SetRole(_followPreviousRole);
+            if(!HoldOriginalRole && !_externalOverride && _employee.taskPriority==0 && BetterSupermarketPlugin.IsHost)SetRole(_followPreviousRole);
         }
         _following=false;_step=null;_handoff=false;_goals.Clear();
     }
-    public void Rest() { if(!_externalOverride && Safe && _originalRole.HasValue)SetRole(_originalRole.Value);_originalRole=null; }
+    public void Rest() { if(!_externalOverride && Safe && _originalRole.HasValue)SetRole(HoldOriginalRole?0:_originalRole.Value);if(!HoldOriginalRole)_originalRole=null; }
     internal bool TakeExternalEvent() { bool value=_externalEvent;_externalEvent=false;return value; }
     internal void ExternalChange()
     {
@@ -323,7 +406,7 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         }
         return !(_following || _handoff && Safe);
     }
-    internal bool Allows(Data_Container shelf,int pair,int product) => !Targeted || !_handoff && _goals.Any(x=>x.Shelf==shelf && x.Pair==pair && x.Product==product && !x.Quota.Done);
+    internal bool Allows(Data_Container shelf,int pair,int product) => !Targeted || !_handoff && !(_step.OneDelivery && _goals.Any(x=>x.Quota.Delivered>0)) && _goals.Any(x=>x.Shelf==shelf && x.Pair==pair && x.Product==product && !x.Quota.Done);
     internal void Delivered(Data_Container shelf,int pair,int quantity)
     {
         if(!Targeted || quantity<=0)return;
@@ -345,7 +428,7 @@ internal static class CompanionExternalAllPriorities
     private static void Prefix()
     {
         var companion=BetterSupermarketPlugin.Instance?.Companion;
-        if(companion!=null) { companion.StaffWorld.ExternalChange(-1);companion.ExternalRoleChange(companion.BoundIndex); }
+        if(companion!=null) { companion.AssistantStaff.External(-1);companion.StaffWorld.ExternalChange(-1);companion.ExternalRoleChange(companion.BoundIndex); }
     }
 }
 
@@ -360,7 +443,7 @@ internal static class CompanionEmployeeScope
         if((!BetterSupermarketPlugin.EnablePlugin && (BetterSupermarketPlugin.Instance?.Companion?.StaffWorld.Queue.Count??0)==0 && !(BetterSupermarketPlugin.Instance?.Companion?.NeedsSafeHandoff??false)) || !__instance.isServer || __instance.employeeParentOBJ==null || __0<0 || __0>=__instance.employeeParentOBJ.transform.childCount)return true;
         Current=__instance.employeeParentOBJ.transform.GetChild(__0).GetComponent<NPC_Info>();
         var companion=BetterSupermarketPlugin.Instance?.Companion;
-        return !(companion?.RiceOwns(Current) ?? false) && (companion?.WorkWorld.BeforeNative(Current) ?? true) && (companion?.StaffWorld.BeforeNative(Current) ?? true);
+        return !(companion?.RiceOwns(Current) ?? false) && (CompanionWorkWorld.For(Current)?.BeforeNative(Current) ?? true) && (companion?.StaffWorld.BeforeNative(Current) ?? true);
     }
     private static void Postfix(NPC_Info __state) { Current=__state; }
     private static Exception Finalizer(Exception __exception,NPC_Info __state) { Current=__state;return __exception; }
@@ -371,7 +454,7 @@ internal static class CompanionPlacementResult
 {
     private static void Postfix(Data_Container __instance,int rowIndex,int quantity)
     {
-        var world=BetterSupermarketPlugin.Instance?.Companion?.WorkWorld;
+        var world=CompanionWorkWorld.For(CompanionEmployeeScope.Current);
         if(world?.Matches(CompanionEmployeeScope.Current)==true)world.Delivered(__instance,rowIndex,quantity);
     }
 }

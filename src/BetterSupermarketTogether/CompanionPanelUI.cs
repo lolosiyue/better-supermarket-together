@@ -24,6 +24,7 @@ internal static partial class SettingsPanelUI
     {
         if (!BetterSupermarketPlugin.IsHost || Companion == null) return;
         if (_companionOpen) { TogglePanel(); return; }
+        Companion.WorkWorld.PointAtShelf();
         if (_panel == null) BuildPanel();
         if (_panel == null) return;
         if (_page4 == null) BuildCompanionPage();
