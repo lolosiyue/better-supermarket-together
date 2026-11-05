@@ -10,12 +10,12 @@ namespace BetterSupermarketTogether;
 internal static partial class SettingsPanelUI
 {
     private static GameObject _page4;
-    private static Text _chatText, _chatStatus, _binding, _facts, _cacheStats, _workStatus, _autoLabel;
+    private static Text _chatText, _chatStatus, _binding, _facts, _cacheStats, _workStatus, _autoLabel, _eraseLabel;
     private static InputField _messageInput;
     private static ScrollRect _chatScroll;
-    private static FirstPersonController _pausedPlayer;
-    private static bool _wasPlayerEnabled, _wasCursorVisible, _companionOpen, _eraseArmed;
-    private static CursorLockMode _cursorLock;
+    private static bool _companionOpen, _eraseArmed, _submitPending;
+    private static float _eraseArmedAt;
+    private const float EraseConfirmSeconds = 4f;
     internal static bool CompanionOpen => _companionOpen && PanelOpen;
     internal static bool Typing => EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null && EventSystem.current.currentSelectedGameObject.GetComponent<InputField>()?.isFocused == true;
     private static DeepSeekCompanion Companion => BetterSupermarketPlugin.Instance?.Companion;
@@ -31,20 +31,15 @@ internal static partial class SettingsPanelUI
         _panel.SetActive(true); _backdrop?.SetActive(true);
         ShowPage(4);
         _companionOpen = true;
-        _cursorLock = Cursor.lockState; _wasCursorVisible = Cursor.visible;
-        _pausedPlayer = FirstPersonController.Instance;
-        if (_pausedPlayer != null) { _wasPlayerEnabled = _pausedPlayer.enabled; _pausedPlayer.enabled = false; }
-        Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+        CapturePlayer();
         RefreshCompanion();
     }
 
     internal static void CloseCompanion()
     {
         if (!_companionOpen) return;
-        _companionOpen = false; _eraseArmed = false;
-        if (_pausedPlayer != null) _pausedPlayer.enabled = _wasPlayerEnabled;
-        _pausedPlayer = null;
-        Cursor.lockState = _cursorLock; Cursor.visible = _wasCursorVisible;
+        _companionOpen = false; _submitPending = false;
+        SetEraseArmed(false);
         if (_page4 != null) _page4.SetActive(false);
         if (_messageInput != null) _messageInput.DeactivateInputField();
     }
@@ -52,6 +47,7 @@ internal static partial class SettingsPanelUI
     internal static void RefreshCompanion()
     {
         if (!_companionOpen || _chatText == null || Companion == null) return;
+        if (_eraseArmed && Time.unscaledTime - _eraseArmedAt > EraseConfirmSeconds) SetEraseArmed(false);
         _binding.text = Companion.BindingLabel;
         _chatStatus.text = Companion.Status + "\n" + Companion.AvatarStatus;
         _facts.text = Companion.Facts;
@@ -66,13 +62,37 @@ internal static partial class SettingsPanelUI
         }
     }
 
+    private static void SetEraseArmed(bool armed)
+    {
+        _eraseArmed = armed;
+        _eraseArmedAt = Time.unscaledTime;
+        if (_eraseLabel != null) ModText.Bind(_eraseLabel, armed ? "再按一次確認清除" : "清除對話與記憶");
+    }
+
+    private static void SubmitMessage()
+    {
+        if (_messageInput == null || Companion == null) return;
+        Companion.Send(_messageInput.text);
+        if (Companion.Busy) _messageInput.text = "";
+    }
+
+    // InputField is mid-edit inside onValidateInput, so the send runs on the next host tick.
+    private static void ProcessPendingSubmit()
+    {
+        if (!_submitPending) return;
+        _submitPending = false;
+        if (_companionOpen) SubmitMessage();
+    }
+
+    private static bool EnterPressed() => Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+    private static bool ShiftHeld() => Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
     private static void BuildCompanionPage()
     {
         _page4 = NewStretch(_panel.transform, "DeepSeekCompanion");
         var parent = _page4.transform;
         NewText(parent, "DeepSeek 娘 · 超市同伴", 22, new Vector2(-285, 292), new Vector2(410, 32), TextAnchor.MiddleLeft);
         AddButton(parent, "返回", new Vector2(355,292), new Vector2(85,32), new Color(.2f,.35f,.55f), () => ShowPage(1));
-        AddButton(parent, "X", new Vector2(460,292), new Vector2(50,32), new Color(.6f,.2f,.2f), TogglePanel);
         _binding = NewText(parent, "", 15, new Vector2(-100,249), new Vector2(770,28), TextAnchor.MiddleLeft);
         AddButton(parent, "解除綁定", new Vector2(415,249), new Vector2(130,30), new Color(.4f,.3f,.35f), () => Companion.Unbind());
         NewText(parent, "員工編號", 14, new Vector2(-435,212), new Vector2(110,28), TextAnchor.MiddleLeft);
@@ -109,16 +129,22 @@ internal static partial class SettingsPanelUI
         _cacheStats.supportRichText = false;
         _messageInput = CompanionInput(parent, new Vector2(-205,-157), new Vector2(560,54), "", 1000);
         _messageInput.lineType = InputField.LineType.MultiLineNewline;
-        AddButton(parent, "傳送", new Vector2(145,-157), new Vector2(100,48), new Color(.15f,.5f,.5f), () => {
-            string text = _messageInput.text; Companion.Send(text);
-            if (Companion.Busy) _messageInput.text = "";
-        });
+        // Enter sends, Shift+Enter inserts a newline. Pasted newlines and IME commits carry no Enter key-down.
+        _messageInput.onValidateInput = (text, index, ch) =>
+        {
+            if (ch == '\n' && EnterPressed() && !ShiftHeld()) { _submitPending = true; return '\0'; }
+            return ch;
+        };
+        var hint = NewText(_messageInput.transform, "輸入訊息：Enter 傳送，Shift+Enter 換行", 14, Vector2.zero, new Vector2(546,50), TextAnchor.MiddleLeft);
+        hint.color = new Color(.45f,.45f,.5f); hint.fontStyle = FontStyle.Italic;
+        _messageInput.placeholder = hint;
+        AddButton(parent, "傳送", new Vector2(145,-157), new Vector2(100,48), new Color(.15f,.5f,.5f), SubmitMessage);
         AddButton(parent, "取消請求", new Vector2(330,-125), new Vector2(200,30), new Color(.4f,.3f,.35f), () => Companion.Cancel());
         var erase = AddButton(parent, "清除對話與記憶", new Vector2(330,-165), new Vector2(200,30), new Color(.4f,.3f,.35f), () => {
-            if (_eraseArmed) { Companion.ClearMemory(); _eraseArmed = false; }
-            else _eraseArmed = true;
+            if (_eraseArmed) { Companion.ClearMemory(); SetEraseArmed(false); }
+            else SetEraseArmed(true);
         });
-        erase.onClick.AddListener(() => ModText.Bind(erase.GetComponentInChildren<Text>(), _eraseArmed ? "再按一次確認清除" : "清除對話與記憶"));
+        _eraseLabel = erase.GetComponentInChildren<Text>();
         _chatStatus = NewText(parent, "", 13, new Vector2(0,-202), new Vector2(960,38), TextAnchor.MiddleLeft);
         _chatStatus.supportRichText = false;
         NewText(parent, "API 網址", 12, new Vector2(-440,-243), new Vector2(100,28), TextAnchor.MiddleLeft);

@@ -495,7 +495,9 @@ public class BetterSupermarketPlugin : BaseUnityPlugin
 			ApplyExtraEmployeeSlots(NPC_Manager.Instance);
 			SettingsPanelUI.EnsureBoardButton();
 		}
-		if (_panelKey.Value.IsDown() && !CompanionInputCapture.Blocked)
+		SettingsPanelUI.Tick();
+		// Not gated by Blocked: an open panel blocks game input, but F10 must still close it.
+		if (_panelKey.Value.IsDown() && !SettingsPanelUI.Typing)
 		{
 			SettingsPanelUI.TogglePanel();
 		}

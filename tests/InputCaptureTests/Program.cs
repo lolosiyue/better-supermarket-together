@@ -10,12 +10,12 @@ void Button(bool expectedRun,bool expectedResult) {
 }
 Time.frameCount=1;
 Check(!CompanionInputCapture.Blocked,"closed panel leaves gameplay input available");
-SettingsPanelUI.CompanionOpen=true;
+SettingsPanelUI.PanelOpen=true;
 Button(false,false);
 object[] axis={4f};
 typeof(CompanionAxisCapturePatch).GetMethod("Prefix",BindingFlags.NonPublic|BindingFlags.Static).Invoke(null,axis);
 Check((float)axis[0]==0,"chat suppresses movement axes");
-SettingsPanelUI.CompanionOpen=false; Input.anyKey=true; Time.frameCount=2;
+SettingsPanelUI.PanelOpen=false; Input.anyKey=true; Time.frameCount=2;
 Check(CompanionInputCapture.Blocked,"closing click or held key cannot leak into game");
 Input.anyKey=false; Time.frameCount=3;
 Check(CompanionInputCapture.Blocked,"release edge remains captured");
@@ -27,12 +27,24 @@ SettingsPanelUI.Typing=false; Time.frameCount=5;
 Check(CompanionInputCapture.Blocked,"focus loss captures release frame");
 Time.frameCount=6;
 Check(!CompanionInputCapture.Blocked,"capture restores after focus loss");
+SettingsPanelUI.PanelOpen=true; Time.frameCount=7;
+Check(CompanionInputCapture.Blocked,"F10 settings panel captures gameplay input like chat");
+SettingsPanelUI.PanelOpen=false; Time.frameCount=8; Input.anyKey=false;
+Check(CompanionInputCapture.Blocked,"settings panel close captures release frame");
+Time.frameCount=9;
+Check(!CompanionInputCapture.Blocked,"capture restores after settings panel closes");
+CompanionInputCapture.HoldUntilReleased(); Input.anyKey=true; Time.frameCount=10;
+Check(CompanionInputCapture.Blocked,"keys still held after escape-close stay captured");
+Input.anyKey=false; Time.frameCount=11;
+Check(CompanionInputCapture.Blocked,"escape release frame remains captured");
+Time.frameCount=12;
+Check(!CompanionInputCapture.Blocked,"capture restores after escape release");
 var buttons=CompanionInputCapture.Targets(typeof(bool)).ToArray();
 Check(buttons.Length==3 && buttons.All(x=>x.Name!="Unrelated"),"select button overloads and negative actions only");
 Check(CompanionInputCapture.Targets(typeof(float)).Single().Name=="GetAxis","select scalar axis reads");
 Check(CompanionInputCapture.Targets(typeof(Vector2)).Single().Name=="GetAxis2D","select vector axis reads");
 Console.WriteLine($"{checks} input checks passed (Unity/Harmony stubs; no runtime acceptance).");
-namespace BetterSupermarketTogether { internal static class SettingsPanelUI { internal static bool CompanionOpen,Typing; } }
+namespace BetterSupermarketTogether { internal static class SettingsPanelUI { internal static bool Typing,PanelOpen; } }
 namespace UnityEngine { public struct Vector2 { public static Vector2 zero=>default; } public static class Input { public static bool anyKey; } public static class Time { public static int frameCount; } }
 namespace HarmonyLib { public class HarmonyPatch:Attribute {} public static class AccessTools { public static Type TypeByName(string name)=>typeof(Rewired.Player); } }
 namespace Rewired { public class Player { public bool GetButton(string s)=>true; public bool GetButton(int i)=>true; public bool GetNegativeButton(int i)=>true; public bool Unrelated()=>true; public float GetAxis(string s)=>1; public Vector2 GetAxis2D(int x,int y)=>default; } }

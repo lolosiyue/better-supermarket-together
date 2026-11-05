@@ -16,7 +16,8 @@ internal static class CompanionInputCapture
     {
         get
         {
-            if (SettingsPanelUI.CompanionOpen || SettingsPanelUI.Typing)
+            // Any open mod panel (settings or chat) owns the mouse and keyboard, including Escape.
+            if (SettingsPanelUI.PanelOpen || SettingsPanelUI.Typing)
             {
                 _releasePending = true;
                 return true;
@@ -30,6 +31,9 @@ internal static class CompanionInputCapture
             return Time.frameCount <= _releaseFrame;
         }
     }
+
+    // Keep game actions blocked until the keys that closed a panel are released.
+    internal static void HoldUntilReleased() => _releasePending = true;
 
     internal static IEnumerable<MethodBase> Targets(Type resultType)
     {

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Free the cursor and pause first-person look/movement whenever the mod panel is open, not only in F7. Opening from F10 or the manager board now behaves like the companion page, returning from F7 to settings keeps the cursor, and the previous cursor/player state is restored on close. Game actions stay captured while any panel page is open; F10 still closes the panel.
+- Scale the panel with resolution: unchanged up to 1080p, larger on 1440p/4K, smaller only when the screen cannot fit it.
+- Close the panel with Escape (the first press leaves a focused text field), by clicking outside it, or with a shared X button visible on every page. Escape is kept from reaching the game while it is held.
+- "Randomize all names" requires a second press on the same page. Employee paging disables Previous/Next at the ends and shows "page x / y".
+- Companion chat: Enter sends and Shift+Enter inserts a newline; pasted newlines and IME commits do not send. The message box shows a hint placeholder. The clear-memory confirmation resets on close and after four seconds.
+- 337 companion checks and 18 input-capture checks passed; release compiled against installed game assemblies. Cursor capture on F10 confirmed in game. Escape versus the game's pause menu and IME Enter behavior remain unverified in game.
+
 ## 1.4.9 — 2026-11-02
 
 - Add player-only assistant_task tools for persistent follow, personal targeted restocking, exact-shelf coworker delegation, product/shelf guidance, local inspection and return-to-job. Preserve the original job throughout assistant errands; finite outcomes resume follow with bounded retry delay. Explicit return, manual job changes, plugin disable or scene reset exit assistant mode.

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
+using StarterAssets;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,6 +24,15 @@ internal static partial class SettingsPanelUI
 	private static GameObject _page2;
 	private static GameObject _page3;
 	private static int _employeePage;
+	private static bool _renameAllArmed;
+	private static GameObject _closeButton;
+	private static Vector2Int _scaledScreen;
+	private static bool _typingLastFrame;
+	private static FirstPersonController _pausedPlayer;
+	private static bool _playerCaptured, _wasPlayerEnabled, _wasCursorVisible;
+	private static CursorLockMode _cursorLock;
+	private const float PanelWidth = 1010f;
+	private const float PanelHeight = 640f;
 
 	private static Font _font;
 
@@ -59,11 +69,14 @@ internal static partial class SettingsPanelUI
 	public static void ResetForSceneChange()
 	{
         CloseCompanion();
+        ReleasePlayer();
         _page4 = null;
         if (_boardButton != null) UnityEngine.Object.Destroy(_boardButton);
         _boardButton = null;
 		_buttonCreated = false;
 		_panel = null;
+		_closeButton = null;
+		_scaledScreen = default;
 		_page1 = null;
 		_page2 = null;
 		_page3 = null;
@@ -167,14 +180,97 @@ internal static partial class SettingsPanelUI
 		}
 		if (flag)
 		{
+			CapturePlayer();
 			ShowPage(1);
 			RefreshValues();
+		}
+		else
+		{
+			ReleasePlayer();
+		}
+	}
+
+	// Any visible page (F10, manager board or F7) frees the cursor and stops first-person look/movement.
+	private static void CapturePlayer()
+	{
+		if (_playerCaptured) return;
+		_playerCaptured = true;
+		_cursorLock = Cursor.lockState;
+		_wasCursorVisible = Cursor.visible;
+		_pausedPlayer = FirstPersonController.Instance;
+		if (_pausedPlayer != null)
+		{
+			_wasPlayerEnabled = _pausedPlayer.enabled;
+			_pausedPlayer.enabled = false;
+		}
+		Cursor.lockState = CursorLockMode.None;
+		Cursor.visible = true;
+	}
+
+	private static void ReleasePlayer()
+	{
+		if (!_playerCaptured) return;
+		_playerCaptured = false;
+		if (_pausedPlayer != null) _pausedPlayer.enabled = _wasPlayerEnabled;
+		_pausedPlayer = null;
+		Cursor.lockState = _cursorLock;
+		Cursor.visible = _wasCursorVisible;
+	}
+
+	// Called every host frame: Escape closes the panel, deferred chat submit, resolution changes.
+	internal static void Tick()
+	{
+		bool typing = Typing;
+		if (PanelOpen)
+		{
+			ApplyUiScale();
+			// The game may re-lock the cursor (e.g. on focus changes) while the panel is still up.
+			if (_playerCaptured && (Cursor.lockState != CursorLockMode.None || !Cursor.visible))
+			{
+				Cursor.lockState = CursorLockMode.None;
+				Cursor.visible = true;
+			}
+			if (!typing && !_typingLastFrame && Input.GetKeyDown(KeyCode.Escape))
+			{
+				// Keep the game's own Escape action from firing while the key is still held.
+				CompanionInputCapture.HoldUntilReleased();
+				TogglePanel();
+			}
+		}
+		_typingLastFrame = typing;
+		ProcessPendingSubmit();
+	}
+
+	// Never shrink below the original layout on small screens (unless it would not fit), but grow on 1440p/4K.
+	private static void ApplyUiScale()
+	{
+		if (_canvas == null) return;
+		var size = new Vector2Int(Screen.width, Screen.height);
+		if (size == _scaledScreen) return;
+		_scaledScreen = size;
+		CanvasScaler scaler = _canvas.GetComponent<CanvasScaler>();
+		if (scaler == null) return;
+		float grow = Mathf.Min(size.x / 1920f, size.y / 1080f);
+		float fit = Mathf.Min((size.x - 20f) / PanelWidth, (size.y - 20f) / PanelHeight);
+		scaler.scaleFactor = Mathf.Max(0.5f, Mathf.Min(Mathf.Max(1f, grow), fit));
+	}
+
+	private static void SetButtonEnabled(Button button, bool enabled)
+	{
+		button.interactable = enabled;
+		Text label = button.GetComponentInChildren<Text>();
+		if (label != null)
+		{
+			Color color = label.color;
+			color.a = enabled ? 1f : 0.4f;
+			label.color = color;
 		}
 	}
 
 	private static void ShowPage(int page)
     {
         if (page != 4) CloseCompanion();
+        if (_closeButton != null) _closeButton.transform.SetAsLastSibling();
         if (_page4 != null) _page4.SetActive(page == 4);
         if (_page1 != null) _page1.SetActive(page == 1);
         if (_page2 != null) _page2.SetActive(page == 2);
@@ -193,16 +289,19 @@ internal static partial class SettingsPanelUI
             child.gameObject.SetActive(false);
             UnityEngine.Object.Destroy(child.gameObject);
         }
+        bool renameAllArmed = _renameAllArmed;
+        _renameAllArmed = false;
         var npc = NPC_Manager.Instance;
         NewText(_page3.transform, "員工改名", 22, new Vector2(0f, 292f), new Vector2(800f, 32f), TextAnchor.MiddleCenter);
-        AddButton(_page3.transform, "返回", new Vector2(420f, 292f), new Vector2(110f, 32f), new Color(.2f,.35f,.55f), () => ShowPage(1));
+        AddButton(_page3.transform, "返回", new Vector2(330f, 292f), new Vector2(110f, 32f), new Color(.2f,.35f,.55f), () => ShowPage(1));
         if (npc?.hiredEmployeesData == null) return;
         var employees = new List<int>();
         for (int i = 0; i < npc.hiredEmployeesData.Length; i++)
             if (!string.IsNullOrWhiteSpace(npc.hiredEmployeesData[i])) employees.Add(i);
-        _employeePage = Math.Max(0, Math.Min(_employeePage, Math.Max(0, (employees.Count - 1) / 8)));
+        int pageCount = Math.Max(1, (employees.Count + 7) / 8);
+        _employeePage = Math.Max(0, Math.Min(_employeePage, pageCount - 1));
         var employeeCount = NewText(_page3.transform, "", 15, new Vector2(90f, 245f), new Vector2(570f, 28f), TextAnchor.MiddleCenter);
-        LabelBindings.Add((employeeCount, () => ModText.Format("已僱用 {0} / 上限 {1}，第 {2} 頁", npc.numberOfHiredEmployees, npc.maxEmployees, _employeePage + 1)));
+        LabelBindings.Add((employeeCount, () => ModText.Format("已僱用 {0} / 上限 {1}，第 {2} / {3} 頁", npc.numberOfHiredEmployees, npc.maxEmployees, _employeePage + 1, pageCount)));
         var nameStyle = AddButton(_page3.transform, "",
             new Vector2(-350f,245f), new Vector2(260f,34f), new Color(.25f,.35f,.55f), () =>
             {
@@ -230,11 +329,29 @@ internal static partial class SettingsPanelUI
             AddButton(_page3.transform, "改名", new Vector2(170f,y), new Vector2(95f,34f), new Color(.2f,.45f,.35f), () => RenameEmployee(npc,index,input.text));
             AddButton(_page3.transform, "隨機", new Vector2(285f,y), new Vector2(95f,34f), new Color(.2f,.4f,.6f), () => RenameEmployee(npc,index,EmployeeRandomNamePatch.PickRandomName(npc,index)));
         }
-        AddButton(_page3.transform, "上一頁", new Vector2(-160f,-270f), new Vector2(120f,34f), new Color(.2f,.35f,.55f), () => { _employeePage--; BuildEmployeePage(); });
-        AddButton(_page3.transform, "下一頁", new Vector2(0f,-270f), new Vector2(120f,34f), new Color(.2f,.35f,.55f), () => { _employeePage++; BuildEmployeePage(); });
-        AddButton(_page3.transform, "全部隨機改名", new Vector2(240f,-270f), new Vector2(210f,34f), new Color(.2f,.4f,.6f), () =>
+        var previous = AddButton(_page3.transform, "上一頁", new Vector2(-160f,-270f), new Vector2(120f,34f), new Color(.2f,.35f,.55f), () =>
+        {
+            if (_employeePage <= 0) return;
+            _employeePage--; BuildEmployeePage();
+        });
+        SetButtonEnabled(previous, _employeePage > 0);
+        var next = AddButton(_page3.transform, "下一頁", new Vector2(0f,-270f), new Vector2(120f,34f), new Color(.2f,.35f,.55f), () =>
+        {
+            if (_employeePage >= pageCount - 1) return;
+            _employeePage++; BuildEmployeePage();
+        });
+        SetButtonEnabled(next, _employeePage < pageCount - 1);
+        // Overwrites every name and cannot be undone, so it needs a second press on the same page.
+        AddButton(_page3.transform, renameAllArmed ? "再按一次確認全部改名" : "全部隨機改名", new Vector2(240f,-270f), new Vector2(210f,34f),
+            renameAllArmed ? new Color(.6f,.3f,.2f) : new Color(.2f,.4f,.6f), () =>
         {
             if (!npc.isServer || !BetterSupermarketPlugin.RandomNameButtonEnabled) return;
+            if (!renameAllArmed)
+            {
+                _renameAllArmed = true;
+                BuildEmployeePage();
+                return;
+            }
             foreach (int index in employees) EmployeeNaming.Rename(npc,index, EmployeeRandomNamePatch.PickRandomName(npc,index));
             BuildEmployeePage();
         });
@@ -294,8 +411,12 @@ internal static partial class SettingsPanelUI
 		GameObject gameObject = new GameObject("AR2230_SettingsCanvas", typeof(Canvas), typeof(GraphicRaycaster));
 		gameObject.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
 		gameObject.GetComponent<Canvas>().sortingOrder = 9000;
+		CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
+		scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
 		UnityEngine.Object.DontDestroyOnLoad(gameObject);
 		_canvas = gameObject;
+		_scaledScreen = default;
+		ApplyUiScale();
 		GameObject gameObject2 = new GameObject("Backdrop", typeof(RectTransform));
 		gameObject2.transform.SetParent(gameObject.transform, worldPositionStays: false);
 		RectTransform rectTransform = (RectTransform)gameObject2.transform;
@@ -304,13 +425,21 @@ internal static partial class SettingsPanelUI
 		rectTransform.offsetMin = Vector2.zero;
 		rectTransform.offsetMax = Vector2.zero;
 		gameObject2.AddComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.55f);
+		// Clicking outside the panel closes it; the panel's own Image blocks clicks inside.
+		Button backdropButton = gameObject2.AddComponent<Button>();
+		backdropButton.transition = Selectable.Transition.None;
+		backdropButton.onClick.AddListener(() =>
+		{
+			if (BetterSupermarketPlugin.IsHost && PanelOpen) TogglePanel();
+		});
 		_backdrop = gameObject2;
-		_panel = NewRect(gameObject.transform, "Panel", new Vector2(1010f, 640f), Vector2.zero, new Color(0.1f, 0.12f, 0.15f, 0.97f));
+		_panel = NewRect(gameObject.transform, "Panel", new Vector2(PanelWidth, PanelHeight), Vector2.zero, new Color(0.1f, 0.12f, 0.15f, 0.97f));
 		_page1 = NewStretch(_panel.transform, "Page1");
 		_page2 = NewStretch(_panel.transform, "Page2");
 		_page3 = NewStretch(_panel.transform, "Page3");
+		// Shared close button, kept above every page (see ShowPage).
+		_closeButton = AddButton(_panel.transform, "X", new Vector2(470f, 292f), new Vector2(44f, 32f), new Color(0.6f, 0.2f, 0.2f), TogglePanel).gameObject;
 		NewText(_page1.transform, "Better Supermarket Together 設定", 20, new Vector2(-330f, 292f), new Vector2(300f, 30f), TextAnchor.MiddleLeft);
-		AddButton(_page1.transform, "X", new Vector2(470f, 292f), new Vector2(44f, 32f), new Color(0.6f, 0.2f, 0.2f), TogglePanel);
 		AddButton(_page1.transform, "第2頁：分類最低庫存", new Vector2(0f, 292f), new Vector2(240f, 32f), new Color(0.2f, 0.35f, 0.55f), () =>
 		{
 			ShowPage(2);
