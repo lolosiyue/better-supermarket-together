@@ -15,7 +15,7 @@ internal sealed class CompanionLife
     private readonly System.Random _random=new System.Random();
     internal void Reset() { _employee=null;_settings=null;_social=new CompanionSocialPolicy();_gate.Reset(); }
     internal void Defer() => _gate.Defer(Time.time);
-    internal CompanionStep Tick(NPC_Info employee, bool eligible, CompanionBehaviorPreferences preferences, CompanionWorkWorld world, CompanionAvatar avatar, bool tired=false, bool storeClosed=false)
+    internal CompanionStep Tick(NPC_Info employee, bool eligible, CompanionBehaviorPreferences preferences, CompanionWorkWorld world, CompanionAvatar avatar, bool tired=false, bool storeClosed=false, bool companyAnyway=false)
     {
         if(employee!=_employee){_employee=employee;_settings=null;_social=new CompanionSocialPolicy();_gate.Reset();avatar.StopIdlePose();}
         bool idle=eligible && Idle(employee);
@@ -48,7 +48,7 @@ internal sealed class CompanionLife
         if(nod)avatar.BeginIdlePose(3,player.transform.position+Vector3.up*1.4f);
         if(_social.Relax(Time.time,preferences.Relax && preferences.Frequency!="關" && avatar.CanIdlePose))avatar.BeginIdlePose(4);
         // After hours or while resting, wander over and keep the player company for a minute at a time.
-        if(preferences.Company && (storeClosed || employee.taskPriority==0) && player!=null && _gate.CompanyDue(Time.time))
+        if(preferences.Company && (storeClosed || employee.taskPriority==0 || companyAnyway) && player!=null && _gate.CompanyDue(Time.time))
         {
             float distance=(player.transform.position-employee.transform.position).sqrMagnitude;
             if(distance>36 && distance<3600)

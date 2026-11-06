@@ -12,7 +12,7 @@ using UnityEngine.Rendering;
 namespace BetterSupermarketTogether;
 
 // Deliberately supports the pinned bundled VRM only. It is not a general VRM importer:
-// Base textures, retargeted native poses and bounded secondary motion; no MToon or expressions.
+// Base textures, retargeted native poses, bounded secondary motion and preset facial expressions; no MToon.
 [DefaultExecutionOrder(10000)]
 internal sealed class CompanionAvatar : MonoBehaviour
 {
@@ -27,6 +27,9 @@ internal sealed class CompanionAvatar : MonoBehaviour
     private float _gazeYaw,_gazePitch;
     // Set by the companion every tick: player close, visible and in front; whether she is working.
     internal bool GazeAvailable,GazeWorking;
+    // Face state lives here even before the model loads, so reactions set early still play.
+    internal readonly CompanionFacePolicy Face=new CompanionFacePolicy(new System.Random());
+    private CompanionFaceRig _faceRig;
     internal bool CanIdlePose => Ready && _ricePose==null && _idlePose==null;
     internal void BeginIdlePose(int kind,Vector3? lookTarget=null) { if(CanIdlePose)_idlePose=new CompanionIdlePose(kind,Time.time,lookTarget); }
     internal void StopIdlePose() => _idlePose?.Stop(Time.time);
@@ -165,13 +168,16 @@ internal sealed class CompanionAvatar : MonoBehaviour
                 material.SetOverrideTag("RenderType","Transparent"); material.renderQueue=(int)RenderQueue.Transparent;
             }
         }
+        var byNode = new Dictionary<int,List<SkinnedMeshRenderer>>();
         for (int n = 0; n < nodes.Count; n++)
         {
             if (nodes[n]["mesh"] == null) continue;
+            var meshJson = d.Json["meshes"][(int)nodes[n]["mesh"]];
+            var targetNames = meshJson["extras"]?["targetNames"] as JArray;
             var skin = d.Json["skins"][(int)nodes[n]["skin"]];
             var bones = ((JArray)skin["joints"]).Select(x => transforms[(int)x]).ToArray();
             var bindPoses = d.Matrices((int)skin["inverseBindMatrices"]);
-            foreach (var primitive in d.Json["meshes"][(int)nodes[n]["mesh"]]["primitives"])
+            foreach (var primitive in meshJson["primitives"])
             {
                 var attributes = primitive["attributes"];
                 var mesh = new Mesh { name = "DeepSeek primitive", indexFormat = IndexFormat.UInt32 };
@@ -182,12 +188,24 @@ internal sealed class CompanionAvatar : MonoBehaviour
                 mesh.boneWeights = d.Weights((int)attributes["JOINTS_0"],(int)attributes["WEIGHTS_0"]);
                 mesh.bindposes = bindPoses;
                 mesh.triangles = d.Indices((int)primitive["indices"]);
+                if (primitive["targets"] is JArray targets)
+                    for (int t = 0; t < targets.Count; t++)
+                    {
+                        // Same handedness flip as the base vertices; only position deltas are authored.
+                        var deltas = targets[t]["POSITION"] == null ? new Vector3[mesh.vertexCount] : d.FastVectors((int)targets[t]["POSITION"], true);
+                        if (deltas.Length != mesh.vertexCount) throw new IOException("Invalid morph target");
+                        string name = (string)targetNames?[t] ?? "target_" + t;
+                        mesh.AddBlendShapeFrame(name, 100f, deltas, null, null);
+                        if (t % 8 == 7) yield return null;
+                    }
                 mesh.RecalculateBounds();
                 var obj = new GameObject("Mesh"); obj.transform.SetParent(transforms[n],false);
                 var renderer = obj.AddComponent<SkinnedMeshRenderer>();
                 renderer.sharedMesh = mesh; renderer.bones = bones; renderer.rootBone = transforms[(int)d.Json["extensions"]["VRMC_vrm"]["humanoid"]["humanBones"]["hips"]["node"]];
                 renderer.sharedMaterial = materials[(int)primitive["material"]];
                 renderer.updateWhenOffscreen = true;
+                if (!byNode.TryGetValue(n, out var list)) byNode[n] = list = new List<SkinnedMeshRenderer>();
+                list.Add(renderer);
             }
             yield return null;
         }
@@ -199,6 +217,8 @@ internal sealed class CompanionAvatar : MonoBehaviour
         Portrait = CompanionPortrait.Render(_visual, human["head"], human["hips"], _resources);
         _bridge = new CompanionPoseBridge(_source,_visual.transform,human);
         _human=human;
+        _faceRig = new CompanionFaceRig(d.Json["extensions"]["VRMC_vrm"]["expressions"], byNode);
+        if (_faceRig.Presets == 0) _faceRig = null;
         _secondary = new CompanionSecondaryMotion(d.Json["extensions"]?["VRMC_springBone"],transforms,_visual.transform);
         if (!_bridge.Apply()) throw new InvalidOperationException("Native rig changed while loading");
         _visual.SetActive(true);
@@ -218,6 +238,9 @@ internal sealed class CompanionAvatar : MonoBehaviour
         }
         _ricePose?.Apply(Time.time-_riceStarted);
         ApplyGaze();
+        var face=Face.Update(Time.time,Time.deltaTime);
+        // Eating keeps a neutral face so the mouth pose and bowl stay readable.
+        if(_faceRig!=null)_faceRig.Apply(_ricePose==null?face:Neutral);
         _secondary?.Apply(Time.deltaTime);
     }
 
@@ -251,12 +274,13 @@ internal sealed class CompanionAvatar : MonoBehaviour
         catch(Exception error) { EndRicePose();BetterSupermarketPlugin.Log.LogWarning("Rice pose unavailable: "+error.GetType().Name);return false; }
     }
     internal void EndRicePose() { _ricePose?.Dispose();_ricePose=null; }
+    private static readonly Dictionary<string,double> Neutral=new Dictionary<string,double>();
 
     private static Vector3 Vector(JToken t,Vector3 fallback,bool reverse) => t is JArray ? new Vector3((float)t[0],(float)t[1],(reverse?-1:1)*(float)t[2]) : fallback;
     internal void Clear() { if (_load != null) StopCoroutine(_load); _load=null; _employee=null; _modelPath=_lastDiagnostic=null; Release(); _retry.Reset(); Status="使用原有員工外觀。"; }
     private void Release()
     {
-        EndRicePose();_idlePose=null;_human=null; Portrait=null;
+        EndRicePose();_idlePose=null;_human=null; Portrait=null;_faceRig=null;
         _bridge?.Restore(); _bridge=null; _secondary=null;
         foreach (var renderer in _hidden) if (renderer != null) renderer.enabled=true;
         _hidden.Clear();
@@ -299,6 +323,23 @@ internal sealed class CompanionAvatar : MonoBehaviour
             if (type==5126) return BitConverter.ToSingle(_bytes,offset);
             float value=type==5123?BitConverter.ToUInt16(_bytes,offset):_bytes[offset];
             return (bool)(accessor["normalized"]??false)?value/(type==5123?65535f:255f):value;
+        }
+        // Dense float VEC3 reader for large morph targets; other layouts use the generic path.
+        internal Vector3[] FastVectors(int a,bool reverse)
+        {
+            var accessor=Json["accessors"][a];int count=(int)accessor["count"];
+            if(accessor["bufferView"]==null)return new Vector3[count];
+            if((int)accessor["componentType"]!=5126 || (string)accessor["type"]!="VEC3" || accessor["sparse"]!=null)return Vectors(a,reverse);
+            var view=Json["bufferViews"][(int)accessor["bufferView"]];
+            int stride=(int)(view["byteStride"]??12),offset=_binary+(int)(view["byteOffset"]??0)+(int)(accessor["byteOffset"]??0);
+            if(offset<0 || count<0 || offset+(long)stride*(count-1)+12>_bytes.Length)throw new IOException("Invalid accessor");
+            var result=new Vector3[count];
+            for(int i=0;i<count;i++)
+            {
+                int at=offset+i*stride;
+                result[i]=new Vector3(BitConverter.ToSingle(_bytes,at),BitConverter.ToSingle(_bytes,at+4),(reverse?-1:1)*BitConverter.ToSingle(_bytes,at+8));
+            }
+            return result;
         }
         internal Vector3[] Vectors(int a,bool reverse) => Enumerable.Range(0,Count(a)).Select(i=>new Vector3(Read(a,i,0,3),Read(a,i,1,3),(reverse?-1:1)*Read(a,i,2,3))).ToArray();
         internal Vector2[] Uvs(int a) => Enumerable.Range(0,Count(a)).Select(i=>new Vector2(Read(a,i,0,2),1-Read(a,i,1,2))).ToArray();

@@ -11,7 +11,9 @@ namespace BetterSupermarketTogether;
 // and replies come back as chat lines instead of only living in the F7 panel.
 internal static class CompanionGameChat
 {
-    private struct Line { public string Speaker, Text; public bool Broadcast; public float Delay; }
+    private struct Line { public string Speaker, Text; public bool Broadcast, Speech; public float Delay; }
+    // Raised when one of her spoken lines actually appears, so the mouth moves in time with it.
+    internal static System.Action<string> Spoken;
     private static readonly Queue<Line> Pending = new Queue<Line>();
     private static readonly MethodInfo ReceiveRpc = AccessTools.Method(typeof(PlayerObjectController), "RpcReceiveChatMsg");
     private static float _readyAt = -1;
@@ -22,19 +24,19 @@ internal static class CompanionGameChat
     {
         var chunks = CompanionChatPolicy.Chunks(answer);
         for (int i = 0; i < chunks.Count; i++)
-            Enqueue(speaker, chunks[i], broadcast, typing ? CompanionChatPolicy.TypingDelay(chunks[i], i == 0) : LineInterval);
+            Enqueue(speaker, chunks[i], broadcast, typing ? CompanionChatPolicy.TypingDelay(chunks[i], i == 0) : LineInterval, true);
     }
 
     // Status/errors are only for the host; other players never see them.
     internal static void Notice(string speaker, string text)
     {
-        foreach (string chunk in CompanionChatPolicy.Chunks(text)) Enqueue(speaker, chunk, false, LineInterval);
+        foreach (string chunk in CompanionChatPolicy.Chunks(text)) Enqueue(speaker, chunk, false, LineInterval, false);
     }
 
-    private static void Enqueue(string speaker, string text, bool broadcast, float delay)
+    private static void Enqueue(string speaker, string text, bool broadcast, float delay, bool speech)
     {
         if (Pending.Count >= 32) return;
-        Pending.Enqueue(new Line { Speaker = CompanionChatPolicy.Plain(speaker).Replace(":", " "), Text = text, Broadcast = broadcast, Delay = delay });
+        Pending.Enqueue(new Line { Speaker = CompanionChatPolicy.Plain(speaker).Replace(":", " "), Text = text, Broadcast = broadcast, Delay = delay, Speech = speech });
     }
 
     internal static void Clear() { Pending.Clear(); _readyAt = -1; }
@@ -47,6 +49,7 @@ internal static class CompanionGameChat
         if (Time.unscaledTime < _readyAt) return;
         _readyAt = -1;
         var line = Pending.Dequeue();
+        if (line.Speech) Spoken?.Invoke(line.Text);
         try
         {
             var host = NetworkServer.active ? NetworkServer.localConnection?.identity?.GetComponent<PlayerObjectController>() : null;

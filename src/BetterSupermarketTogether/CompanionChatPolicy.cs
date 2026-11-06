@@ -60,6 +60,21 @@ internal static class CompanionChatPolicy
         return result;
     }
 
+    private static readonly System.Text.RegularExpressions.Regex EmotionTag = new System.Text.RegularExpressions.Regex(
+        @"[\[［]\s*(happy|sad|angry|surprised|relaxed|neutral)\s*[\]］]\s*", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    // The model may prefix a reply with [happy] etc.; the first tag sets her face and all tags are hidden.
+    internal static string TakeEmotion(string answer, out string emotion)
+    {
+        emotion = null;
+        if (string.IsNullOrEmpty(answer)) return answer ?? "";
+        var match = EmotionTag.Match(answer);
+        if (!match.Success) return answer;
+        emotion = match.Groups[1].Value.ToLowerInvariant();
+        if (emotion == "neutral") emotion = null;
+        return EmotionTag.Replace(answer, "").Trim();
+    }
+
     internal static bool IsSkip(string answer) =>
         string.IsNullOrWhiteSpace(answer) || answer.Trim().Trim('.', '。', '!', '！', '"', '「', '」').Equals("SKIP", StringComparison.OrdinalIgnoreCase);
 

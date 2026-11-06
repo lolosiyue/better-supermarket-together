@@ -68,5 +68,6 @@ internal sealed class CompanionPresencePolicy
         double away = now - _lastActive; _lastActive = now;
         return away >= AwaySeconds ? away : 0;
     }
+    internal double IdleFor(double now) => _lastActive < 0 ? 0 : Math.Max(0, now - _lastActive);
     internal void Reset() => _lastActive = -1;
 }

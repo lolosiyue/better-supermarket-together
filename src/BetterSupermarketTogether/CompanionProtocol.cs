@@ -141,6 +141,8 @@ internal sealed class CompanionMemory
     public List<string> Facts = new List<string>();
     public float[] RestCorner;
     public List<CompanionLine> History = new List<CompanionLine>();
+    public CompanionRelationship Relationship = new CompanionRelationship();
+    public CompanionDiary Diary = new CompanionDiary();
 
     internal void Add(string role, string text)
     {
@@ -171,6 +173,9 @@ internal sealed class CompanionMemory
         if(result.RestCorner!=null && (result.RestCorner.Length!=3 || Array.Exists(result.RestCorner,x=>float.IsNaN(x) || float.IsInfinity(x) || Math.Abs(x)>100000)))result.RestCorner=null;
         foreach (var fact in result.Facts) if (fact == null || fact.Length > 200) throw new IOException("記憶資料損壞。");
         foreach (var line in result.History) if (line == null || (line.Role != "user" && line.Role != "assistant" && line.Role != "system") || line.Text == null || line.Text.Length > 2000) throw new IOException("對話資料損壞。");
+        // Older files have no relationship or diary yet; damaged values are clamped rather than rejected.
+        result.Relationship = result.Relationship ?? new CompanionRelationship(); result.Relationship.Sanitize();
+        result.Diary = result.Diary ?? new CompanionDiary(); result.Diary.Sanitize();
         return result;
     }
 

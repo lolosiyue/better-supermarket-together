@@ -37,6 +37,8 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
     private Transform Shelves => Manager?.shelvesOBJ != null ? Manager.shelvesOBJ.transform : null;
     internal void Bind(NPC_Info employee) { if(_employee!=employee)_originalRole=null;_employee=employee; }
     internal bool HoldOriginalRole;
+    // Closer friends stand closer when following or keeping company.
+    internal float FollowDistance=3.5f;
     internal static CompanionWorkWorld For(NPC_Info employee)
     {
         var c=BetterSupermarketPlugin.Instance?.Companion;
@@ -354,10 +356,11 @@ internal sealed class CompanionWorkWorld : ICompanionWorkWorld
         if(ready)
         {
             var route=new EmployeeNavigation(_employee.gameObject);
-            if(route.IsNear(player.transform.position,3.5f)){agent.isStopped=true;agent.ResetPath();_followBlocked=0;_followProgress=now;return true;}
+            if(route.IsNear(player.transform.position,FollowDistance)){agent.isStopped=true;agent.ResetPath();_followBlocked=0;_followProgress=now;return true;}
             if(Vector3.SqrMagnitude(_employee.transform.position-_followPosition)>.04f){_followPosition=_employee.transform.position;_followProgress=now;}
             if(now-_followProgress>45)return false;
-            Vector3 target=player.transform.position-player.transform.forward*2f+player.transform.right*1.2f;
+            float scale=FollowDistance/3.5f;
+            Vector3 target=player.transform.position-player.transform.forward*2f*scale+player.transform.right*1.2f*scale;
             if(route.MoveTo(target) || route.MoveTo(player.transform.position)){_followBlocked=0;return true;}
         }
         if(_followBlocked==0)_followBlocked=now;

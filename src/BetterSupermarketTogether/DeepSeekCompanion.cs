@@ -55,7 +55,9 @@ internal sealed class DeepSeekCompanion
     private Vector3 _lastPlayerPos;
     private Quaternion _lastPlayerLook;
     private float _greetUntil;
-    private bool _sessionGreeted, _companyPlan;
+    private bool _sessionGreeted, _companyPlan, _closingNow, _diaryBusy;
+    private float _greetedAt, _nextDiaryTry;
+    private int _session;
     private float _nextWorkTick, _nextAutoScan, _nextStaffTick;
     private ModText.Message _lastPlanEvent,_lastRiceEvent;
     private int _lastPlanEventVersion=-1;
@@ -116,7 +118,7 @@ internal sealed class DeepSeekCompanion
         }
     }
     private CompanionBehaviorPreferences Behavior => CompanionBehaviorPreferences.Resolve(_memory?.Facts,_helpEnabled.Value,_idleGestures.Value,_riceEnabled.Value);
-    internal string Facts => Behavior.Summary(ModText.English)+"\n"+( _memory == null || _memory.Facts.Count == 0 ? ModText.Get("尚未儲存偏好；可以說「記住我叫阿明」。") : string.Join("\n", _memory.Facts.Select((x, i) => (i + 1) + ". " + x)));
+    internal string Facts => Behavior.Summary(ModText.English)+"\n"+(_memory==null?"":_memory.Relationship.Summary(ModText.English)+"\n"+_memory.Diary.Summary(ModText.English)+"\n")+( _memory == null || _memory.Facts.Count == 0 ? ModText.Get("尚未儲存偏好；可以說「記住我叫阿明」。") : string.Join("\n", _memory.Facts.Select((x, i) => (i + 1) + ". " + x)));
     internal string BindingLabel => _memory == null || BoundIndex < 0 ? ModText.Get("未綁定員工") : ModText.Format("員工 {0}：{1}", BoundIndex + 1, _memory.EmployeeName) + (_bound == null ? ModText.Get("（等待員工載入／需重新綁定）") : " · " + ModText.Get(CompanionProtocol.RoleLabels[Mathf.Clamp(_bound.taskPriority, 0, 7)]));
     private string KeyPath => Path.Combine(Paths.ConfigPath, "BetterSupermarketTogether.deepseek.key");
 
@@ -133,6 +135,7 @@ internal sealed class DeepSeekCompanion
         _autoLimit=config.Bind("Companion","AutonomyDecisionsPerHour",20,new ConfigDescription(
             ModText.Description("每小時自主決策上限；每次決策最多四個 API 回覆。","Maximum autonomous decisions per hour; each decision has at most four API replies."),new AcceptableValueRange<int>(1,60)));
         _avatar = owner.gameObject.AddComponent<CompanionAvatar>();
+        CompanionGameChat.Spoken = line => _avatar.Face.Speak(Time.time, Mathf.Clamp(line.Length * .13f, .6f, 6f));
         _riceBreak=new CompanionRiceBreak(_avatar);
         _helpEnabled=config.Bind("Companion","ProactiveHelp",true,ModText.Description("閒時主動補附近一格貨架，完成一次後回原職；不呼叫 API。","When idle, help restock one nearby shelf then return to the original role. No API call."));
         _idleGestures=config.Bind("Companion","IdleGestures",true,ModText.Description("閒時偶爾伸懶腰、左右看看或整理裙擺；僅本機外觀。","Occasional idle stretching, looking around and smoothing the skirt. Local visual only."));
@@ -195,7 +198,7 @@ internal sealed class DeepSeekCompanion
                 }
                 if(WorkWorld.TakeExternalEvent()){_autonomy=false;_assistantMode=false;WorkWorld.HoldOriginalRole=false;}
                 if((_plan.Phase==CompanionPlanPhase.Completed || _plan.Phase==CompanionPlanPhase.Failed) && _lastPlanEventVersion!=_plan.EventVersion && _companyPlan)
-                { _lastPlanEventVersion=_plan.EventVersion;_companyPlan=false; } // Keeping company is not work worth reporting.
+                { _lastPlanEventVersion=_plan.EventVersion;_companyPlan=false;Relate(_memory.Relationship.Gain(GameData.Instance.gameDay,1)); } // Keeping company is not work worth reporting.
                 else if((_plan.Phase==CompanionPlanPhase.Completed || _plan.Phase==CompanionPlanPhase.Failed) && _lastPlanEventVersion!=_plan.EventVersion)
                 {
                     _lastPlanEvent=_plan.Status;_lastPlanEventVersion=_plan.EventVersion;_memory.AddNotice(_plan.Status);Persist();_autoGate.Changed();
@@ -215,15 +218,16 @@ internal sealed class DeepSeekCompanion
             var behavior=Behavior;
             if(!behavior.Help && _plan.Active?.OneDelivery==true && !_plan.HandingOff)_plan.Cancel();
             var help=_life.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !_riceBreak.Active,
-                behavior,WorkWorld,_avatar,_mood.Energy<40,!GameData.Instance.isSupermarketOpen);
+                behavior,WorkWorld,_avatar,_mood.Energy<40,!GameData.Instance.isSupermarketOpen,
+                _memory!=null && _memory.Relationship.Stage>=4 && _presence.IdleFor(Time.unscaledTime)>=300);
             if(help!=null)
             {
                 _companyPlan=help.Company;_lastPlanEvent=null;_plan.Replace(new List<CompanionStep>{help},true);_plan.Tick(Time.time,WorkWorld);
             }
             var snack=_riceBreak.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && behavior.Rice && _bound!=null &&
                 !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !NPC_Manager.Instance.employeesOnRiot);
-            if(snack!=null) { _lastRiceEvent=snack;_memory?.AddNotice(snack);Persist();Feel("You secretly ate a bowl of rice from the shelf: "+snack.WireText,10,15,true); }
-            if(_bound!=null && Time.timeScale>0){TickMood();TickPresence(behavior);}
+            if(snack!=null) { _avatar.Face.Express(Time.time,"happy",.8f,4);_lastRiceEvent=snack;_memory?.AddNotice(snack);Persist();Feel("You secretly ate a bowl of rice from the shelf: "+snack.WireText,10,15,true); }
+            if(_bound!=null && Time.timeScale>0){TickMood();TickPresence(behavior);TickDiary();}
             else _avatar.GazeAvailable=false;
         }
         if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + .2f; SettingsPanelUI.RefreshCompanion(); }
@@ -232,6 +236,7 @@ internal sealed class DeepSeekCompanion
     private void Feel(string description,double mood,double energy,bool remark)
     {
         _mood.Event(Time.time,description,mood,energy);
+        if(_memory!=null && GameData.Instance!=null && _memory.Diary.Note(GameData.Instance.gameDay,description))Persist();
         if(!remark || !_gameChat.Value || _remarksPerHour.Value<=0)return;
         _pendingRemark=description;_pendingRemarkAt=Time.unscaledTime;
     }
@@ -239,7 +244,102 @@ internal sealed class DeepSeekCompanion
     private void PlanFeeling(bool done,bool automatic,string status)
     {
         if(automatic){if(done)Feel("You finished some work on your own: "+status,3,0,false);return;}
+        _avatar.Face.Express(Time.time,done?"happy":"sad",done?.65f:.6f,done?3:4);
         Feel((done?"You finished the work the player asked for: ":"You could not finish the work the player asked for: ")+status,done?8:-8,0,true);
+        if(done && _memory!=null)Relate(_memory.Relationship.Gain(GameData.Instance.gameDay,4));
+    }
+
+    private void Talked(string text)
+    {
+        _mood.Chatted(Time.time);
+        if(_memory==null || GameData.Instance==null)return;
+        int day=GameData.Instance.gameDay;
+        if(_memory.Diary.Notes.Count(x=>x.StartsWith("The player said",StringComparison.Ordinal))<4)
+            _memory.Diary.Note(day,"The player said: \""+CompanionDiary.Clip(text,80)+"\"");
+        int stages=_memory.Relationship.Talked(day);
+        if(_greetedAt>0 && Time.unscaledTime-_greetedAt<=120){_greetedAt=0;stages+=_memory.Relationship.Gain(day,5);_mood.Event(Time.time,"The player answered your greeting.",4);}
+        Persist();Relate(stages);
+    }
+
+    private void Relate(int stages)
+    {
+        if(stages<=0 || _memory==null)return;
+        Persist();
+        _avatar.Face.Express(Time.time,"happy",.9f,4);
+        Feel("You feel closer to the player now; your relationship has grown to: "+_memory.Relationship.StageWire+".",8,0,true);
+    }
+
+    // At closing (or when a day was left unfinished) write a diary entry; condense old entries.
+    private void TickDiary()
+    {
+        bool closing=_closingNow;_closingNow=false;
+        if(_diaryBusy || _memory==null || !BetterSupermarketPlugin.EnablePlugin || Time.unscaledTime<_nextDiaryTry)return;
+        var diary=_memory.Diary;var memory=_memory;
+        string language=ModText.English?"English":"Traditional Chinese (follow the player's language preference in player_facts, e.g. Cantonese)";
+        if(diary.Due(GameData.Instance.gameDay,closing))
+        {
+            var notes=diary.Take(out int day);Persist();
+            var input=new JObject{["game_day"]=day,["relationship"]=memory.Relationship.StageWire,["your_mood"]=_mood.MoodWord(Time.time),["your_energy"]=_mood.EnergyWord,
+                ["player_facts"]=new JArray(memory.Facts),["notes"]=new JArray(notes)};
+            string instruction="\nYou are privately writing your own short diary entry about today at the supermarket with the player (the host). Write in first person, in "+language+
+                ", one or two sentences, at most 80 Chinese characters or 40 English words. Mention concrete moments from the notes and how you felt; never invent events that are not in the notes. Output only the diary text.";
+            if(!StartDiary(instruction,input,text=>memory.Diary.Add(day,DateTime.Now.ToString("yyyy-MM-dd"),text),()=>memory.Diary.Restore(day,notes)))diary.Restore(day,notes);
+        }
+        else if(diary.NeedsRollUp)
+        {
+            var oldest=diary.Oldest;
+            var input=new JObject{["previous_long_term_memory"]=diary.LongAgo,["entries"]=new JArray(oldest.Select(x=>new JObject{["day"]=x.Day,["entry"]=x.Text}))};
+            string instruction="\nCondense these older diary entries and the previous long-term memory, if any, into one first-person memory of your time with the player, in "+language+
+                ", at most 150 Chinese characters or 70 English words. Keep the most meaningful moments. Output only the text.";
+            StartDiary(instruction,input,text=>memory.Diary.RolledUp(oldest,text),null);
+        }
+    }
+
+    private bool StartDiary(string instruction,JObject input,Action<string> done,Action failed)
+    {
+        Uri endpoint;string key;
+        try
+        {
+            endpoint=CompanionProtocol.Endpoint(_url.Value);
+            key=File.Exists(KeyPath)?File.ReadAllText(KeyPath).Trim():Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
+            if(string.IsNullOrWhiteSpace(key) && !endpoint.IsLoopback){_nextDiaryTry=Time.unscaledTime+300;return false;}
+        }
+        catch(Exception){_nextDiaryTry=Time.unscaledTime+300;return false;}
+        var messages=new JArray(new JObject{["role"]="system",["content"]=_persona.Value+instruction},new JObject{["role"]="user",["content"]=input.ToString(Newtonsoft.Json.Formatting.None)});
+        _diaryBusy=true;
+        _owner.StartCoroutine(WriteDiary(endpoint,key,messages,_memory,_session,done,failed));
+        return true;
+    }
+
+    // Runs beside chat requests; never touches the chat ledger or tools.
+    private IEnumerator WriteDiary(Uri endpoint,string key,JArray messages,CompanionMemory memory,int session,Action<string> done,Action failed)
+    {
+        yield return null;
+        var stats=_usage;
+        var cancel=new CancellationTokenSource(TimeSpan.FromSeconds(50));
+        var task=CompanionProtocol.Complete(_http,endpoint,key,_model.Value,messages,false,cancel.Token,usage=>{stats.Record(usage);BetterSupermarketPlugin.Log.LogInfo(usage.LogText);});
+        while(!task.IsCompleted && session==_session && _memory==memory)yield return null;
+        if(!task.IsCompleted)cancel.Cancel();
+        cancel.Dispose();
+        if(session!=_session || _memory!=memory)yield break;
+        _diaryBusy=false;
+        string text=task.Status==TaskStatus.RanToCompletion?(string)task.Result["content"]:null;
+        if(task.IsFaulted)BetterSupermarketPlugin.Log.LogWarning("Companion diary request failed: "+task.Exception?.GetBaseException().GetType().Name);
+        if(string.IsNullOrWhiteSpace(text)){failed?.Invoke();_nextDiaryTry=Time.unscaledTime+300;Persist();yield break;}
+        done(text);Persist();
+    }
+
+    private void RestingFace()
+    {
+        var face=_avatar.Face;face.Tired=_mood.Energy<40;
+        double mood=_mood.Mood;
+        if(_mood.Energy<15)face.SetBase("relaxed",.55);
+        else if(_mood.Energy<40)face.SetBase("relaxed",.35);
+        else if(_mood.Lonely(Time.time))face.SetBase("sad",.25);
+        else if(mood>=40)face.SetBase("happy",.35);
+        else if(mood>=10)face.SetBase("happy",.15);
+        else if(mood<=-15)face.SetBase("sad",.35);
+        else face.SetBase(null,0);
     }
 
     // Inner state comes from observed facts only; remarks are rate-limited API replies.
@@ -247,10 +347,20 @@ internal sealed class DeepSeekCompanion
     {
         bool working=_bound.equippedItem!=0 || _bound.state>1 && _bound.state!=10;
         _mood.Observe(Time.time,working,GameData.Instance.gameDay);
+        RestingFace();
+        if(_memory!=null)
+        {
+            int before=_memory.Relationship.LastGameDay;
+            int stages=_memory.Relationship.Day(GameData.Instance.gameDay);
+            if(before!=_memory.Relationship.LastGameDay){Persist();Relate(stages);}
+            WorkWorld.FollowDistance=_memory.Relationship.Stage>=3?2.2f:3.5f;
+        }
         bool open=GameData.Instance.isSupermarketOpen;
+        if(_wasOpen.HasValue && _wasOpen.Value && !open)_closingNow=true;
         if(_wasOpen.HasValue && _wasOpen.Value!=open)Feel(open?"The store just opened for the day.":"The store just closed for the day.",open?3:5,0,true);
         _wasOpen=open;
         bool riot=NPC_Manager.Instance.employeesOnRiot;
+        if(riot && !_wasRiot)_avatar.Face.Express(Time.time,"angry",.45f,5);
         if(riot && !_wasRiot)Feel("The employees just went on strike.",-10,0,true);
         _wasRiot=riot;
         var player=FirstPersonController.Instance;
@@ -276,12 +386,16 @@ internal sealed class DeepSeekCompanion
         if(!_sessionGreeted)
         {
             _sessionGreeted=true;
-            if(behavior.GreetOn){_greetUntil=Time.unscaledTime+180;Feel("The player just started playing in the store today.",4,0,true);}
+            int days=_memory==null?0:_memory.Relationship.Arrive(DateTime.Now);
+            if(_memory!=null)Persist();
+            string text=days>=2?"The player is back after "+days+" days away; you missed them.":"The player just started playing in the store today.";
+            if(behavior.GreetOn){_greetUntil=Time.unscaledTime+180;_greetedAt=Time.unscaledTime;Feel(text,days>=2?6:4,0,true);}
+            else _mood.Event(Time.time,text,days>=2?6:4);
         }
         else if(away>0)
         {
             string text="The player just came back after being away for about "+Math.Max(3,(int)(away/60))+" minutes.";
-            if(behavior.GreetOn){_greetUntil=Time.unscaledTime+120;Feel(text,6,0,true);}
+            if(behavior.GreetOn){_greetUntil=Time.unscaledTime+120;_greetedAt=Time.unscaledTime;Feel(text,6,0,true);}
             else _mood.Event(Time.time,text,6);
         }
         var body=_bound.transform;
@@ -292,11 +406,13 @@ internal sealed class DeepSeekCompanion
         _avatar.GazeWorking=!CompanionLife.Idle(_bound);
         bool gesture=BetterSupermarketPlugin.EnablePlugin && _avatar.CanIdlePose && _bound.equippedItem==0 && !_bound.employeeDismissed;
         if(_greetUntil>0 && Time.unscaledTime>_greetUntil)_greetUntil=0;
-        if(_greetUntil>0 && gesture && sight && distance<10 && facing<150){_greetUntil=0;_avatar.BeginIdlePose(5,eye);}
+        if(_greetUntil>0 && gesture && sight && distance<10 && facing<150){_greetUntil=0;_avatar.BeginIdlePose(5,eye);_avatar.Face.Express(Time.time,"happy",.8f,3);}
         bool staring=sight && distance<6 && !SettingsPanelUI.PanelOpen && Vector3.Angle(camera.transform.forward,toHer)<7;
         if(_stare.Observe(Time.unscaledTime,staring) && behavior.StareOn && gesture)
         {
-            _avatar.BeginIdlePose(_random.NextDouble()<.5?6:7,eye);
+            bool shy=_random.NextDouble()<.5;
+            _avatar.BeginIdlePose(shy?6:7,eye);
+            _avatar.Face.Express(Time.time,shy?"happy":"surprised",shy?.55f:.35f,shy?2.4f:2f);
             Feel("The player kept looking straight at you for a while.",3,0,_random.NextDouble()<.3);
         }
     }
@@ -390,7 +506,7 @@ internal sealed class DeepSeekCompanion
     internal void ClearMemory()
     {
         if (!BetterSupermarketPlugin.IsHost || _memory == null) return;
-        Cancel(); _context.Reset(); _memory.Facts.Clear(); _memory.History.Clear(); _memory.RestCorner=null;
+        Cancel(); _context.Reset(); _memory.Facts.Clear(); _memory.History.Clear(); _memory.RestCorner=null; _memory.Relationship=new CompanionRelationship(); _memory.Diary=new CompanionDiary();
         _transcriptCache = null;
         // An explicit erase also removes the automatically retained previous version.
         try { _memory.Save(_memoryPath); if (File.Exists(_memoryPath + ".bak")) File.Delete(_memoryPath + ".bak"); Status = "已清除本商店對話及偏好，保留員工綁定。"; }
@@ -401,7 +517,7 @@ internal sealed class DeepSeekCompanion
     {
         if(Busy && (_automaticRequest || _remarkRequest)){Cancel();_nextSend=0;} // Player messages preempt background requests.
         bool started=StartRequest(text,false);
-        if(started)_mood.Chatted(Time.time);
+        if(started)Talked(text);
         if(!fromChat)return;
         if(started)_chatRequest=true;
         else CompanionGameChat.Notice(SpeakerName,Status);
@@ -443,7 +559,7 @@ internal sealed class DeepSeekCompanion
             ["riot"] = NPC_Manager.Instance.employeesOnRiot, ["production"] = ProductionAutomation.Status };
         var current = new JObject { ["memories"] = new JArray(_memory.Facts.Select((fact,index)=>new JObject { ["number"]=index+1,["fact"]=fact })),
             ["assistant_mode"]=_assistantMode,["assistant_dispatches"]=AssistantStaff.Count,["behavior_preferences"]=Behavior.Snapshot(),["shop"] = snapshot,["work_board"]=WorkWorld.Snapshot(),["staff_roster"]=StaffWorld.Inspect("",0),["work_plan"]=_plan.Summary(true),["latest_work_event"]=_lastPlanEvent?.WireText,["latest_rice_event"]=_lastRiceEvent?.WireText,
-            ["authorization_mode"]=remark?"event_notice":automatic?"autonomous":"player",["inner_state"]=_mood.Snapshot(Time.time),["autonomy_enabled"]=_autonomy,
+            ["authorization_mode"]=remark?"event_notice":automatic?"autonomous":"player",["inner_state"]=_mood.Snapshot(Time.time),["relationship"]=_memory.Relationship.Snapshot(),["shared_memories"]=_memory.Diary.Snapshot(GameData.Instance.gameDay),["autonomy_enabled"]=_autonomy,
             ["reply_language"] = ModText.English ? "English" : "Traditional Chinese; follow the player's language preference" };
         return _context.Begin(_persona.Value,_memory.History,current,text);
     }
@@ -494,16 +610,18 @@ internal sealed class DeepSeekCompanion
             if(finalOnly)messages.Add(_context.FinalOnly());
             continue;
         }
-        string answer = (string)response["content"];
+        string raw = (string)response["content"];
+        string answer = CompanionChatPolicy.TakeEmotion(raw, out string emotion);
+        if(emotion!=null)_avatar.Face.Express(Time.time,emotion,.7f,Mathf.Clamp(answer.Length*.15f+3,3,20));
         if(remark)
         {
             answer=(answer??"").Trim();
             if(CompanionChatPolicy.IsSkip(answer)){_context.Answer("SKIP");Finish("已回覆。");yield break;}
-            _context.Answer(answer);_memory.AddReply(answer,true);Persist();
+            _context.Answer(raw);_memory.AddReply(answer,false);Persist();
             CompanionGameChat.Say(SpeakerName,answer,_gameChatBroadcast.Value,_gameChatTyping.Value);
             Finish("已回覆。");yield break;
         }
-        if (!string.IsNullOrWhiteSpace(answer)) { _context.Answer(answer); _memory.AddReply(answer,automatic); Persist(); if(_chatRequest){_chatRequest=false;CompanionGameChat.Say(SpeakerName,answer,_gameChatBroadcast.Value,_gameChatTyping.Value);} if(automatic){_autoGate.Success();_automaticSucceeded=true;}Finish("已回覆。" ); }
+        if (!string.IsNullOrWhiteSpace(answer)) { _context.Answer(raw); _memory.AddReply(answer,automatic); Persist(); if(_chatRequest){_chatRequest=false;CompanionGameChat.Say(SpeakerName,answer,_gameChatBroadcast.Value,_gameChatTyping.Value);} if(automatic){_autoGate.Success();_automaticSucceeded=true;}Finish("已回覆。" ); }
         else Finish("API 沒有文字回覆；已執行的結果可見對話記錄。");
         yield break;
         }
@@ -678,9 +796,10 @@ internal sealed class DeepSeekCompanion
         _context.Reset(); _usage = new CompanionUsageStats();
         _transcriptCache = null; _nextUiRefresh = 0;
         _memoryWriteFailed = false;
-        _avatar.Clear();CompanionGameChat.Clear();
+        _avatar.Clear();CompanionGameChat.Clear();_avatar.Face.Reset();
         _mood.Reset();_remarkGate.Reset();_pendingRemark=null;_wasOpen=null;_wasRiot=false;_nextLonely=0;
         _stare.Reset();_presence.Reset();_greetUntil=0;_sessionGreeted=false;_companyPlan=false;_avatar.GazeAvailable=false;
+        _session++;_diaryBusy=false;_closingNow=false;_greetedAt=0;_nextDiaryTry=0;WorkWorld.FollowDistance=3.5f;
         SettingsPanelUI.CloseCompanion();
     }
     internal void Dispose() { Reset(); _http.Dispose(); }
