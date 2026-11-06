@@ -23,6 +23,10 @@ internal sealed class CompanionAvatar : MonoBehaviour
     private CompanionSecondaryMotion _secondary;
     private CompanionRicePose _ricePose;
     private CompanionIdlePose _idlePose;
+    private readonly CompanionGazePolicy _gaze=new CompanionGazePolicy();
+    private float _gazeYaw,_gazePitch;
+    // Set by the companion every tick: player close, visible and in front; whether she is working.
+    internal bool GazeAvailable,GazeWorking;
     internal bool CanIdlePose => Ready && _ricePose==null && _idlePose==null;
     internal void BeginIdlePose(int kind,Vector3? lookTarget=null) { if(CanIdlePose)_idlePose=new CompanionIdlePose(kind,Time.time,lookTarget); }
     internal void StopIdlePose() => _idlePose?.Stop(Time.time);
@@ -209,11 +213,34 @@ internal sealed class CompanionAvatar : MonoBehaviour
         { Release(); _retry.Reset(); Status="員工模型已變更，正在重新載入外觀。"; return; }
         if(_idlePose!=null)
         {
-            if(_idlePose.IsNod ? _employee==null || _employee.equippedItem!=0 || _employee.employeeDismissed : !CompanionLife.Idle(_employee))_idlePose.Stop(Time.time);
+            if(_idlePose.IsSocial ? _employee==null || _employee.equippedItem!=0 || _employee.employeeDismissed : !CompanionLife.Idle(_employee))_idlePose.Stop(Time.time);
             if(!_idlePose.Apply(Time.time,_bridge,_human,_employee.transform))_idlePose=null;
         }
         _ricePose?.Apply(Time.time-_riceStarted);
+        ApplyGaze();
         _secondary?.Apply(Time.deltaTime);
+    }
+
+    // Additive head/neck look-at over the native pose; poses and eating take precedence.
+    private void ApplyGaze()
+    {
+        var camera=Camera.main;
+        bool free=_idlePose==null && _ricePose==null && camera!=null && _employee!=null;
+        float weight=(float)_gaze.Update(Time.time,Time.deltaTime,GazeAvailable && free,GazeWorking,UnityEngine.Random.value);
+        if(weight<=.001f || !free || !_human.TryGetValue("head",out var head))return;
+        var root=_employee.transform;Vector3 up=root.up;
+        Vector3 delta=camera.transform.position-head.position,flat=Vector3.ProjectOnPlane(delta,up);
+        float yaw=Mathf.Clamp(Vector3.SignedAngle(root.forward,flat,up),-60,60);
+        float pitch=Mathf.Clamp(-Mathf.Atan2(Vector3.Dot(delta,up),flat.magnitude)*Mathf.Rad2Deg,-25,20);
+        float follow=1-Mathf.Exp(-8*Time.deltaTime);
+        _gazeYaw=Mathf.Lerp(_gazeYaw,yaw,follow);_gazePitch=Mathf.Lerp(_gazePitch,pitch,follow);
+        Quaternion Turn(float y,float p){var turn=Quaternion.AngleAxis(y,up);return Quaternion.AngleAxis(p,turn*root.right)*turn;}
+        if(_human.TryGetValue("neck",out var neck))
+        {
+            neck.rotation=Turn(_gazeYaw*.35f*weight,_gazePitch*.3f*weight)*neck.rotation;
+            head.rotation=Turn(_gazeYaw*.65f*weight,_gazePitch*.7f*weight)*head.rotation;
+        }
+        else head.rotation=Turn(_gazeYaw*weight,_gazePitch*weight)*head.rotation;
     }
 
     internal bool BeginRicePose(int product)

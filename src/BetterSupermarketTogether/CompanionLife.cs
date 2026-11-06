@@ -15,7 +15,7 @@ internal sealed class CompanionLife
     private readonly System.Random _random=new System.Random();
     internal void Reset() { _employee=null;_settings=null;_social=new CompanionSocialPolicy();_gate.Reset(); }
     internal void Defer() => _gate.Defer(Time.time);
-    internal CompanionStep Tick(NPC_Info employee, bool eligible, CompanionBehaviorPreferences preferences, CompanionWorkWorld world, CompanionAvatar avatar)
+    internal CompanionStep Tick(NPC_Info employee, bool eligible, CompanionBehaviorPreferences preferences, CompanionWorkWorld world, CompanionAvatar avatar, bool tired=false, bool storeClosed=false)
     {
         if(employee!=_employee){_employee=employee;_settings=null;_social=new CompanionSocialPolicy();_gate.Reset();avatar.StopIdlePose();}
         bool idle=eligible && Idle(employee);
@@ -47,16 +47,28 @@ internal sealed class CompanionLife
         }
         if(nod)avatar.BeginIdlePose(3,player.transform.position+Vector3.up*1.4f);
         if(_social.Relax(Time.time,preferences.Relax && preferences.Frequency!="關" && avatar.CanIdlePose))avatar.BeginIdlePose(4);
+        // After hours or while resting, wander over and keep the player company for a minute at a time.
+        if(preferences.Company && (storeClosed || employee.taskPriority==0) && player!=null && _gate.CompanyDue(Time.time))
+        {
+            float distance=(player.transform.position-employee.transform.position).sqrMagnitude;
+            if(distance>36 && distance<3600)
+            {
+                _gate.CompanyAttempt(Time.time);avatar.StopIdlePose();
+                return new CompanionStep{Kind="follow",Seconds=60,Company=true};
+            }
+        }
         if(help && employee.taskPriority!=2 && _gate.HelpDue(Time.time))
         {
             _gate.HelpAttempt(Time.time);
             var step=world.FindHelpingTask();
             if(step!=null){avatar.StopIdlePose();return step;}
         }
-        if(gestures && avatar.Ready && _gate.GestureDue(Time.time))
+        bool yawn=tired && preferences.YawnOn;
+        if((gestures || yawn) && avatar.Ready && _gate.GestureDue(Time.time))
         {
             _gate.GestureAttempt(Time.time,_random.NextDouble(),preferences.IntervalScale);
-            if(_random.NextDouble()<.65)avatar.BeginIdlePose(kinds[_random.Next(kinds.Length)]);
+            if(yawn && _random.NextDouble()<.5)avatar.BeginIdlePose(8);
+            else if(gestures && _random.NextDouble()<.65)avatar.BeginIdlePose(kinds[_random.Next(kinds.Length)]);
         }
         if(preferences.Frequency=="關")avatar.StopIdlePose();
         return null;

@@ -180,6 +180,7 @@ internal static partial class ModText
         ["讀取房主商店後可綁定一名員工。"] = "Load a store as host to bind an employee.",
         ["尚未讀取商店記憶。"] = "Store memory has not been loaded.",
         ["你："] = "You: ", ["DeepSeek 娘："] = "DeepSeek: ", ["［執行結果］"] = "[Action result] ",
+        ["DeepSeek 娘"] = "DeepSeek",
         ["尚未儲存偏好；可以說「記住我叫阿明」。"] = "No saved preferences. Try: Remember my name is Alex.",
         ["未綁定員工"] = "No employee bound",
         ["員工 {0}：{1}"] = "Employee {0}: {1}",

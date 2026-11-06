@@ -10,6 +10,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 using HutongGames.PlayMaker;
+using StarterAssets;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -39,7 +40,22 @@ internal sealed class DeepSeekCompanion
     private readonly CompanionPlanRunner _plan = new CompanionPlanRunner();
     private readonly CompanionAutonomyGate _autoGate = new CompanionAutonomyGate();
     private readonly ConfigEntry<int> _autoInterval, _autoLimit;
-    private bool _autonomy, _automaticRequest, _automaticSucceeded;
+    private bool _autonomy, _automaticRequest, _automaticSucceeded, _chatRequest;
+    private readonly ConfigEntry<bool> _gameChat, _gameChatBroadcast, _gameChatTyping;
+    private readonly ConfigEntry<int> _remarksPerHour;
+    private readonly CompanionMood _mood = new CompanionMood();
+    private readonly CompanionRemarkGate _remarkGate = new CompanionRemarkGate();
+    private bool _remarkRequest, _wasRiot;
+    private bool? _wasOpen;
+    private string _pendingRemark;
+    private float _pendingRemarkAt, _nextLonely;
+    private readonly CompanionStarePolicy _stare = new CompanionStarePolicy();
+    private readonly CompanionPresencePolicy _presence = new CompanionPresencePolicy();
+    private readonly System.Random _random = new System.Random();
+    private Vector3 _lastPlayerPos;
+    private Quaternion _lastPlayerLook;
+    private float _greetUntil;
+    private bool _sessionGreeted, _companyPlan;
     private float _nextWorkTick, _nextAutoScan, _nextStaffTick;
     private ModText.Message _lastPlanEvent,_lastRiceEvent;
     private int _lastPlanEventVersion=-1;
@@ -58,6 +74,9 @@ internal sealed class DeepSeekCompanion
     private bool _memoryWriteFailed;
     internal string Status { get => _status.ToString()+(_memoryWriteFailed?ModText.Get("（記憶尚未寫入磁碟）"):""); private set => _status = value; }
     internal string BaseUrl => _url.Value;
+    internal bool GameChatEnabled => _gameChat.Value;
+    internal string SpeakerName => string.IsNullOrWhiteSpace(_memory?.EmployeeName) ? ModText.Get("DeepSeek 娘") : _memory.EmployeeName;
+    internal IEnumerable<string> ChatAliases => CompanionChatPolicy.DefaultAliases.Concat(new[] { _memory?.EmployeeName });
     internal string Model => _model.Value;
     internal string AvatarStatus => ModText.Get(_avatar.Status);
     internal string CacheStatus => _usage.Summary(ModText.English);
@@ -118,11 +137,17 @@ internal sealed class DeepSeekCompanion
         _helpEnabled=config.Bind("Companion","ProactiveHelp",true,ModText.Description("閒時主動補附近一格貨架，完成一次後回原職；不呼叫 API。","When idle, help restock one nearby shelf then return to the original role. No API call."));
         _idleGestures=config.Bind("Companion","IdleGestures",true,ModText.Description("閒時偶爾伸懶腰、左右看看或整理裙擺；僅本機外觀。","Occasional idle stretching, looking around and smoothing the skirt. Local visual only."));
         _riceEnabled=config.Bind("Companion","RiceEasterEgg",true,ModText.Description("低頻率偷吃一份貨架米商品；每遊戲日最多一次，需同伴休息且空手。","Rarely eat one stocked rice product while the companion is resting and empty-handed; at most once per game day."));
+        _gameChat=config.Bind("Companion","GameChat",true,ModText.Description("房主在遊戲原生聊天輸入「@訊息」或「@DS 訊息」即可與同伴對話；回覆顯示於遊戲聊天框。","Host can talk to the companion in the native game chat with \"@message\" or \"@DS message\"; replies appear in the game chat."));
+        _gameChatBroadcast=config.Bind("Companion","GameChatBroadcast",true,ModText.Description("同伴回覆讓所有玩家看見；關閉時只有房主本機看見。錯誤訊息永遠只顯示給房主。","Show companion replies to every player; when off only the host sees them. Errors are always host-only."));
+        _gameChatTyping=config.Bind("Companion","GameChatTyping",true,ModText.Description("回覆按行分開，每行依長度稍作停頓才出現，像真人打字。","Send reply lines one by one with a pause based on length, like someone typing."));
+        _remarksPerHour=config.Bind("Companion","ChatRemarksPerHour",6,new ConfigDescription(
+            ModText.Description("同伴每小時最多主動在遊戲聊天搭話幾次（交代的工作完成、開店／打烊、偷吃白飯、罷工、久未聊天）；每次一個 API 回覆，0 為關閉。","Maximum unprompted companion chat lines per hour (requested work finished, store open/close, rice snack, strike, long silence). One API reply each; 0 disables."),new AcceptableValueRange<int>(0,20)));
     }
 
     internal void Tick()
     {
         if (!BetterSupermarketPlugin.IsHost || GameData.Instance == null) { Reset(); return; }
+        CompanionGameChat.Tick();
         string saveName = FsmVariables.GlobalVariables.GetFsmString("CurrentFilename")?.Value;
         if (string.IsNullOrWhiteSpace(saveName)) { if (_saveName != null) Reset(); return; }
         if (_saveName != saveName)
@@ -166,12 +191,15 @@ internal sealed class DeepSeekCompanion
                 {
                     _plan.Tick(Time.time,WorkWorld);
                     if(_assistantMode && !_plan.Owns && Time.time>=_nextAssistantFollow)
-                    { _nextAssistantFollow=Time.time+10;_plan.Replace(new List<CompanionStep>{new CompanionStep{Kind="follow"}},false);_plan.Tick(Time.time,WorkWorld); }
+                    { _nextAssistantFollow=Time.time+10;_companyPlan=false;_plan.Replace(new List<CompanionStep>{new CompanionStep{Kind="follow"}},false);_plan.Tick(Time.time,WorkWorld); }
                 }
                 if(WorkWorld.TakeExternalEvent()){_autonomy=false;_assistantMode=false;WorkWorld.HoldOriginalRole=false;}
-                if((_plan.Phase==CompanionPlanPhase.Completed || _plan.Phase==CompanionPlanPhase.Failed) && _lastPlanEventVersion!=_plan.EventVersion)
+                if((_plan.Phase==CompanionPlanPhase.Completed || _plan.Phase==CompanionPlanPhase.Failed) && _lastPlanEventVersion!=_plan.EventVersion && _companyPlan)
+                { _lastPlanEventVersion=_plan.EventVersion;_companyPlan=false; } // Keeping company is not work worth reporting.
+                else if((_plan.Phase==CompanionPlanPhase.Completed || _plan.Phase==CompanionPlanPhase.Failed) && _lastPlanEventVersion!=_plan.EventVersion)
                 {
                     _lastPlanEvent=_plan.Status;_lastPlanEventVersion=_plan.EventVersion;_memory.AddNotice(_plan.Status);Persist();_autoGate.Changed();
+                    PlanFeeling(_plan.Phase==CompanionPlanPhase.Completed,_plan.Automatic,_plan.Status.WireText);
                 }
             }
             if(!NPC_Manager.Instance.employeesOnRiot)TickAutonomy();
@@ -187,16 +215,96 @@ internal sealed class DeepSeekCompanion
             var behavior=Behavior;
             if(!behavior.Help && _plan.Active?.OneDelivery==true && !_plan.HandingOff)_plan.Cancel();
             var help=_life.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !_riceBreak.Active,
-                behavior,WorkWorld,_avatar);
+                behavior,WorkWorld,_avatar,_mood.Energy<40,!GameData.Instance.isSupermarketOpen);
             if(help!=null)
             {
-                _lastPlanEvent=null;_plan.Replace(new List<CompanionStep>{help},true);_plan.Tick(Time.time,WorkWorld);
+                _companyPlan=help.Company;_lastPlanEvent=null;_plan.Replace(new List<CompanionStep>{help},true);_plan.Tick(Time.time,WorkWorld);
             }
             var snack=_riceBreak.Tick(_bound,BetterSupermarketPlugin.EnablePlugin && behavior.Rice && _bound!=null &&
                 !Busy && !_plan.Owns && !_assistantMode && !_autonomy && !NPC_Manager.Instance.employeesOnRiot);
-            if(snack!=null) { _lastRiceEvent=snack;_memory?.AddNotice(snack);Persist(); }
+            if(snack!=null) { _lastRiceEvent=snack;_memory?.AddNotice(snack);Persist();Feel("You secretly ate a bowl of rice from the shelf: "+snack.WireText,10,15,true); }
+            if(_bound!=null && Time.timeScale>0){TickMood();TickPresence(behavior);}
+            else _avatar.GazeAvailable=false;
         }
         if (Time.unscaledTime >= _nextUiRefresh) { _nextUiRefresh = Time.unscaledTime + .2f; SettingsPanelUI.RefreshCompanion(); }
+    }
+
+    private void Feel(string description,double mood,double energy,bool remark)
+    {
+        _mood.Event(Time.time,description,mood,energy);
+        if(!remark || !_gameChat.Value || _remarksPerHour.Value<=0)return;
+        _pendingRemark=description;_pendingRemarkAt=Time.unscaledTime;
+    }
+
+    private void PlanFeeling(bool done,bool automatic,string status)
+    {
+        if(automatic){if(done)Feel("You finished some work on your own: "+status,3,0,false);return;}
+        Feel((done?"You finished the work the player asked for: ":"You could not finish the work the player asked for: ")+status,done?8:-8,0,true);
+    }
+
+    // Inner state comes from observed facts only; remarks are rate-limited API replies.
+    private void TickMood()
+    {
+        bool working=_bound.equippedItem!=0 || _bound.state>1 && _bound.state!=10;
+        _mood.Observe(Time.time,working,GameData.Instance.gameDay);
+        bool open=GameData.Instance.isSupermarketOpen;
+        if(_wasOpen.HasValue && _wasOpen.Value!=open)Feel(open?"The store just opened for the day.":"The store just closed for the day.",open?3:5,0,true);
+        _wasOpen=open;
+        bool riot=NPC_Manager.Instance.employeesOnRiot;
+        if(riot && !_wasRiot)Feel("The employees just went on strike.",-10,0,true);
+        _wasRiot=riot;
+        var player=FirstPersonController.Instance;
+        if(Time.unscaledTime>=_nextLonely && _mood.Lonely(Time.time) && player!=null && (player.transform.position-_bound.transform.position).sqrMagnitude<25)
+        { _nextLonely=Time.unscaledTime+1800;Feel("The player is right next to you but has not talked to you for a long while.",-2,0,true); }
+        if(_pendingRemark==null)return;
+        if(Time.unscaledTime-_pendingRemarkAt>90 || !BetterSupermarketPlugin.EnablePlugin){_pendingRemark=null;return;}
+        if(Busy || Time.unscaledTime<_nextSend || !_remarkGate.Ready(Time.unscaledTime,_remarksPerHour.Value))return;
+        string description=_pendingRemark;_pendingRemark=null;
+        if(StartRequest("NO_PLAYER_MESSAGE: "+description+" If it feels natural, say ONE short casual chat line to the player about it in your own voice (react, joke, grumble or share how you feel). Do not use tools, start work or ask for orders. If nothing is worth saying, reply exactly SKIP.",false,true))
+            _remarkGate.Used(Time.unscaledTime);
+    }
+
+    // Eye contact, greetings and stare reactions from what the host's camera actually sees.
+    private void TickPresence(CompanionBehaviorPreferences behavior)
+    {
+        var player=FirstPersonController.Instance;var camera=Camera.main;
+        if(player==null || camera==null){_avatar.GazeAvailable=false;return;}
+        Vector3 eye=camera.transform.position,position=player.transform.position;var look=camera.transform.rotation;
+        bool active=SettingsPanelUI.PanelOpen || (position-_lastPlayerPos).sqrMagnitude>.0025f || Quaternion.Angle(look,_lastPlayerLook)>1.5f;
+        _lastPlayerPos=position;_lastPlayerLook=look;
+        double away=_presence.Observe(Time.unscaledTime,active);
+        if(!_sessionGreeted)
+        {
+            _sessionGreeted=true;
+            if(behavior.GreetOn){_greetUntil=Time.unscaledTime+180;Feel("The player just started playing in the store today.",4,0,true);}
+        }
+        else if(away>0)
+        {
+            string text="The player just came back after being away for about "+Math.Max(3,(int)(away/60))+" minutes.";
+            if(behavior.GreetOn){_greetUntil=Time.unscaledTime+120;Feel(text,6,0,true);}
+            else _mood.Event(Time.time,text,6);
+        }
+        var body=_bound.transform;
+        Vector3 head=body.position+body.up*1.45f,toHer=head-eye;float distance=toHer.magnitude;
+        bool sight=distance<12 && distance>.6f && Visible(eye,head,player);
+        float facing=Vector3.Angle(body.forward,Vector3.ProjectOnPlane(-toHer,body.up));
+        _avatar.GazeAvailable=behavior.Gaze && BetterSupermarketPlugin.EnablePlugin && sight && distance<5 && facing<110;
+        _avatar.GazeWorking=!CompanionLife.Idle(_bound);
+        bool gesture=BetterSupermarketPlugin.EnablePlugin && _avatar.CanIdlePose && _bound.equippedItem==0 && !_bound.employeeDismissed;
+        if(_greetUntil>0 && Time.unscaledTime>_greetUntil)_greetUntil=0;
+        if(_greetUntil>0 && gesture && sight && distance<10 && facing<150){_greetUntil=0;_avatar.BeginIdlePose(5,eye);}
+        bool staring=sight && distance<6 && !SettingsPanelUI.PanelOpen && Vector3.Angle(camera.transform.forward,toHer)<7;
+        if(_stare.Observe(Time.unscaledTime,staring) && behavior.StareOn && gesture)
+        {
+            _avatar.BeginIdlePose(_random.NextDouble()<.5?6:7,eye);
+            Feel("The player kept looking straight at you for a while.",3,0,_random.NextDouble()<.3);
+        }
+    }
+
+    private bool Visible(Vector3 from,Vector3 to,FirstPersonController player)
+    {
+        if(!Physics.Linecast(from,to,out var hit,~0,QueryTriggerInteraction.Ignore))return true;
+        return hit.transform.IsChildOf(_bound.transform) || hit.transform.IsChildOf(player.transform);
     }
 
     private NPC_Info ResolveEmployee()
@@ -289,39 +397,44 @@ internal sealed class DeepSeekCompanion
         catch (Exception) { Status = "清除未能寫入磁碟，請檢查設定目錄權限。"; }
     }
 
-    internal void Send(string text)
+    internal void Send(string text,bool fromChat=false)
     {
-        if(Busy && _automaticRequest)Cancel(); // Player messages preempt in-flight autonomous decisions.
-        StartRequest(text,false);
+        if(Busy && (_automaticRequest || _remarkRequest)){Cancel();_nextSend=0;} // Player messages preempt background requests.
+        bool started=StartRequest(text,false);
+        if(started)_mood.Chatted(Time.time);
+        if(!fromChat)return;
+        if(started)_chatRequest=true;
+        else CompanionGameChat.Notice(SpeakerName,Status);
     }
 
-    private void StartRequest(string text,bool automatic)
+    private bool StartRequest(string text,bool automatic,bool remark=false)
     {
-        if (!BetterSupermarketPlugin.EnablePlugin || _memory == null || ResolveEmployee() == null) { Status = "請先綁定一名在職員工，並啟用插件。"; return; }
-        if (Busy || Time.unscaledTime < _nextSend) { Status = "請等待目前回覆，或按取消。"; return; }
+        if (!BetterSupermarketPlugin.EnablePlugin || _memory == null || ResolveEmployee() == null) { Status = "請先綁定一名在職員工，並啟用插件。"; return false; }
+        if (Busy || Time.unscaledTime < _nextSend) { Status = "請等待目前回覆，或按取消。"; return false; }
         text = (text ?? "").Trim();
-        if (text.Length == 0 || text.Length > 1000) { Status = "訊息長度需為 1–1000 字。"; return; }
+        if (text.Length == 0 || text.Length > 1000) { Status = "訊息長度需為 1–1000 字。"; return false; }
         string key;
         Uri endpoint;
         try
         {
             endpoint = CompanionProtocol.Endpoint(_url.Value);
             key = File.Exists(KeyPath) ? File.ReadAllText(KeyPath).Trim() : Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY");
-            if (string.IsNullOrWhiteSpace(key) && !endpoint.IsLoopback) { if(automatic)_autoGate.Failure(Time.unscaledTime);Status = "請先在 API 設定輸入金鑰；金鑰不會顯示於聊天或日誌。"; return; }
+            if (string.IsNullOrWhiteSpace(key) && !endpoint.IsLoopback) { if(automatic)_autoGate.Failure(Time.unscaledTime);Status = "請先在 API 設定輸入金鑰；金鑰不會顯示於聊天或日誌。"; return false; }
         }
-        catch (Exception) { if(automatic)_autoGate.Failure(Time.unscaledTime);Status = "無法讀取 API 設定或金鑰。"; return; }
-        _automaticRequest=automatic;_automaticSucceeded=false;
-        _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
-        var messages = BuildMessages(text,automatic);
-        if(!automatic){_memory.Add("user", text);Persist();}
+        catch (Exception) { if(automatic)_autoGate.Failure(Time.unscaledTime);Status = "無法讀取 API 設定或金鑰。"; return false; }
+        _automaticRequest=automatic;_automaticSucceeded=false;_chatRequest=false;_remarkRequest=remark;
+        if(!remark){_riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();}
+        var messages = BuildMessages(text,automatic,remark);
+        if(!automatic && !remark){_memory.Add("user", text);Persist();}
         _request = new CancellationTokenSource(TimeSpan.FromSeconds(50));
         _nextSend = Time.unscaledTime + 2f;
         int generation = _generation;
         Status = "DeepSeek 娘正在想……";
-        _conversation = _owner.StartCoroutine(Converse(endpoint, key, _model.Value, messages, generation, _request.Token,automatic));
+        _conversation = _owner.StartCoroutine(Converse(endpoint, key, _model.Value, messages, generation, _request.Token,automatic,remark));
+        return true;
     }
 
-    private JArray BuildMessages(string text,bool automatic)
+    private JArray BuildMessages(string text,bool automatic,bool remark)
     {
         var employee = _bound;
         var snapshot = new JObject {
@@ -330,20 +443,20 @@ internal sealed class DeepSeekCompanion
             ["riot"] = NPC_Manager.Instance.employeesOnRiot, ["production"] = ProductionAutomation.Status };
         var current = new JObject { ["memories"] = new JArray(_memory.Facts.Select((fact,index)=>new JObject { ["number"]=index+1,["fact"]=fact })),
             ["assistant_mode"]=_assistantMode,["assistant_dispatches"]=AssistantStaff.Count,["behavior_preferences"]=Behavior.Snapshot(),["shop"] = snapshot,["work_board"]=WorkWorld.Snapshot(),["staff_roster"]=StaffWorld.Inspect("",0),["work_plan"]=_plan.Summary(true),["latest_work_event"]=_lastPlanEvent?.WireText,["latest_rice_event"]=_lastRiceEvent?.WireText,
-            ["authorization_mode"]=automatic?"autonomous":"player",["autonomy_enabled"]=_autonomy,
+            ["authorization_mode"]=remark?"event_notice":automatic?"autonomous":"player",["inner_state"]=_mood.Snapshot(Time.time),["autonomy_enabled"]=_autonomy,
             ["reply_language"] = ModText.English ? "English" : "Traditional Chinese; follow the player's language preference" };
         return _context.Begin(_persona.Value,_memory.History,current,text);
     }
 
     private bool Current(int generation, CancellationToken token) => generation == _generation && !token.IsCancellationRequested && BetterSupermarketPlugin.IsHost && BetterSupermarketPlugin.EnablePlugin && _bound != null && ResolveEmployee() == _bound;
 
-    private IEnumerator Converse(Uri endpoint, string key, string model, JArray messages, int generation, CancellationToken token,bool automatic)
+    private IEnumerator Converse(Uri endpoint, string key, string model, JArray messages, int generation, CancellationToken token,bool automatic,bool remark)
     {
         // First yield ensures StartCoroutine returns before any completion clears the handle.
         yield return null;
         var stats = _usage;
         Action<CompanionUsage> reportUsage = usage => { stats.Record(usage); BetterSupermarketPlugin.Log.LogInfo(usage.LogText); };
-        int rounds=0;var budget=new CompanionToolBudget();bool finalOnly=false;
+        int rounds=0;var budget=new CompanionToolBudget();bool finalOnly=remark;
         while(true)
         {
         rounds++;
@@ -382,7 +495,15 @@ internal sealed class DeepSeekCompanion
             continue;
         }
         string answer = (string)response["content"];
-        if (!string.IsNullOrWhiteSpace(answer)) { _context.Answer(answer); _memory.AddReply(answer,automatic); Persist(); if(automatic){_autoGate.Success();_automaticSucceeded=true;}Finish("已回覆。" ); }
+        if(remark)
+        {
+            answer=(answer??"").Trim();
+            if(CompanionChatPolicy.IsSkip(answer)){_context.Answer("SKIP");Finish("已回覆。");yield break;}
+            _context.Answer(answer);_memory.AddReply(answer,true);Persist();
+            CompanionGameChat.Say(SpeakerName,answer,_gameChatBroadcast.Value,_gameChatTyping.Value);
+            Finish("已回覆。");yield break;
+        }
+        if (!string.IsNullOrWhiteSpace(answer)) { _context.Answer(answer); _memory.AddReply(answer,automatic); Persist(); if(_chatRequest){_chatRequest=false;CompanionGameChat.Say(SpeakerName,answer,_gameChatBroadcast.Value,_gameChatTyping.Value);} if(automatic){_autoGate.Success();_automaticSucceeded=true;}Finish("已回覆。" ); }
         else Finish("API 沒有文字回覆；已執行的結果可見對話記錄。");
         yield break;
         }
@@ -459,7 +580,7 @@ internal sealed class DeepSeekCompanion
         var error=WorkWorld.Validate(steps);
         if(error!=null)return new ModText.Message("計畫未被接受：{0}",error);
         _riceBreak.Abort();_avatar.StopIdlePose();_life.Defer();
-        _lastPlanEvent=null;_plan.Replace(steps,automatic);
+        _lastPlanEvent=null;_companyPlan=false;_plan.Replace(steps,automatic);
         _plan.Tick(Time.time,WorkWorld);
         ModText.Message notice=!_plan.Owns && _plan.Phase==CompanionPlanPhase.Failed?new ModText.Message("計畫未能開始：{0}",_plan.Status):
             new ModText.Message("計畫已排入，尚未完成：{0}",steps.Count==1?steps[0].Label:new ModText.Message("{0}（另有 {1} 步）",steps[0].Label,steps.Count-1));
@@ -532,7 +653,8 @@ internal sealed class DeepSeekCompanion
     private void Finish(ModText.Message status)
     {
         if(_automaticRequest && !_automaticSucceeded)_autoGate.Failure(Time.unscaledTime);
-        _automaticRequest=false;
+        _automaticRequest=false;_remarkRequest=false;
+        if(_chatRequest){_chatRequest=false;CompanionGameChat.Notice(SpeakerName,status.ToString());}
         _context.Stop("Previous request ended. Only recorded tool results occurred; do not retry older instructions.");
         _status = status; _conversation = null; _request?.Dispose(); _request = null;
     }
@@ -543,7 +665,7 @@ internal sealed class DeepSeekCompanion
         _request?.Cancel(); _request?.Dispose(); _request = null;
         if (_conversation != null) _owner.StopCoroutine(_conversation);
         _conversation = null;
-        _automaticRequest=false;
+        _automaticRequest=false;_chatRequest=false;_remarkRequest=false;
         Status = "已取消待處理回覆；已完成的派工保持有效。";
     }
     internal void Reset()
@@ -556,7 +678,9 @@ internal sealed class DeepSeekCompanion
         _context.Reset(); _usage = new CompanionUsageStats();
         _transcriptCache = null; _nextUiRefresh = 0;
         _memoryWriteFailed = false;
-        _avatar.Clear();
+        _avatar.Clear();CompanionGameChat.Clear();
+        _mood.Reset();_remarkGate.Reset();_pendingRemark=null;_wasOpen=null;_wasRiot=false;_nextLonely=0;
+        _stare.Reset();_presence.Reset();_greetUntil=0;_sessionGreeted=false;_companyPlan=false;_avatar.GazeAvailable=false;
         SettingsPanelUI.CloseCompanion();
     }
     internal void Dispose() { Reset(); _http.Dispose(); }

@@ -18,6 +18,9 @@
     <Compile Include="../../src/BetterSupermarketTogether/ModText.Catalog.cs" Link="ModText.Catalog.cs" />
     <Compile Include="../../src/BetterSupermarketTogether/ModText.Messages.cs" Link="ModText.Messages.cs" />
     <Compile Include="../../src/BetterSupermarketTogether/CompanionRigPolicy.cs" Link="CompanionRigPolicy.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionChatPolicy.cs" Link="CompanionChatPolicy.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionMood.cs" Link="CompanionMood.cs" />
+    <Compile Include="../../src/BetterSupermarketTogether/CompanionPresence.cs" Link="CompanionPresence.cs" />
     <None Update="employee-bone-names.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="../../src/BetterSupermarketTogether/StaffCapacity.cs" Link="StaffCapacity.cs" />
     <Reference Include="Newtonsoft.Json"><HintPath>$(GameDir)/Supermarket Together_Data/Managed/Newtonsoft.Json.dll</HintPath></Reference>

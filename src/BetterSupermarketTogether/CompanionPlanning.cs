@@ -12,6 +12,7 @@ internal sealed class CompanionStep
     internal int Seconds;
     internal int? RowPair; // Internal proactive target; never accepted from API JSON.
     internal bool OneDelivery;
+    internal bool Company; // Local after-hours company; never accepted from API JSON.
     internal bool Continuous => Kind == "follow" ? Seconds == 0 : Kind == "work" && Completion == "continuous";
     internal ModText.Message Label
     {

@@ -20,6 +20,8 @@ LifeChecks.Run(Check);
 BehaviorPreferenceChecks.Run(Check);
 SocialChecks.Run(Check);
 AssistantChecks.Run(Check);
+ChatChecks.Run(Check);
+PresenceChecks.Run(Check);
 var rigs=JArray.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"employee-bone-names.json")));
 Check(rigs.Count==7,"all seven native employee models covered");
 foreach(var rig in rigs) {
